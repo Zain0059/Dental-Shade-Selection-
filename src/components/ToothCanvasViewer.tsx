@@ -59,6 +59,7 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
   const [sampleRadius, setSampleRadius] = useState<number>(3); // 1, 3, 5, 15 pixels
   const [isCalibratingMode, setIsCalibratingMode] = useState(false);
   const [hoverColor, setHoverColor] = useState<{ rgb: RGBColor; lab: CIELABColor } | null>(null);
+  const [showAdvancedImaging, setShowAdvancedImaging] = useState(false);
 
   const canvasWidth = 500;
   const canvasHeight = 440;
@@ -230,12 +231,11 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
   };
 
   return (
-    <div id="tooth-viewer-container" className="bg-slate-900 border border-slate-800 rounded-2xl p-4 lg:p-5 flex flex-col gap-4">
-      {/* Top Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
-        {/* Case Selector */}
+    <div id="tooth-viewer-container" className="bg-white border border-neutral-200 rounded-2xl p-4 lg:p-5 flex flex-col gap-4">
+      {/* Top Controls Bar — kept to two things: which case, and the one setting that changes the science (glare filter) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-neutral-200">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Patient Case:</span>
+          <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider hidden sm:inline">Case:</span>
           <select
             id="select-dental-case"
             value={currentCase.id}
@@ -243,7 +243,7 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
               const selected = cases.find((c) => c.id === e.target.value);
               if (selected) onSelectCase(selected);
             }}
-            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500 font-medium"
+            className="bg-neutral-100 border border-neutral-300 text-neutral-800 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-teal-600 font-medium"
           >
             {cases.map((c) => (
               <option key={c.id} value={c.id}>
@@ -253,59 +253,25 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
           </select>
         </div>
 
-        {/* Action Toggles */}
-        <div className="flex items-center flex-wrap gap-2">
-          {/* Cross-Polarization Toggle */}
-          <button
-            id="btn-toggle-polarization"
-            onClick={onTogglePolarized}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition ${
-              crossPolarized
-                ? "bg-cyan-500/20 border border-cyan-500 text-cyan-300 shadow-sm shadow-cyan-500/20 font-bold"
-                : "bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200"
-            }`}
-            title="Cross-polarization removes surface specular reflection to show true internal dentin chroma & mamelons"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Glare Filter: {crossPolarized ? "POLARIZED (Clear)" : "UNPOLARIZED"}</span>
-          </button>
-
-          {/* 3-Zone Overlay Toggle */}
-          <button
-            id="btn-toggle-zones"
-            onClick={() => setShowZones(!showZones)}
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition ${
-              showZones
-                ? "bg-blue-500/20 border border-blue-500/40 text-blue-300 font-bold"
-                : "bg-slate-800 border border-slate-700 text-slate-400"
-            }`}
-            title="Toggle Cervical, Middle, and Incisal zone guides"
-          >
-            {showZones ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">Zone Lines</span>
-          </button>
-
-          {/* Optical Heatmap Toggle */}
-          <button
-            id="btn-toggle-heatmap"
-            onClick={() => setShowHeatmap(!showHeatmap)}
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition ${
-              showHeatmap
-                ? "bg-purple-500/20 border border-purple-500/40 text-purple-300 font-bold"
-                : "bg-slate-800 border border-slate-700 text-slate-400"
-            }`}
-            title="Toggle ΔE color distribution heatmap"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">ΔE Heatmap</span>
-          </button>
-        </div>
+        <button
+          id="btn-toggle-polarization"
+          onClick={onTogglePolarized}
+          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition ${
+            crossPolarized
+              ? "bg-teal-600/15 border border-teal-600 text-teal-700 font-bold"
+              : "bg-neutral-100 border border-neutral-300 text-neutral-500 hover:text-neutral-800"
+          }`}
+          title="Cross-polarization removes surface specular reflection to show true internal dentin chroma & mamelons"
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>{crossPolarized ? "Polarized (clear)" : "Unpolarized"}</span>
+        </button>
       </div>
 
       {/* Quick Action Hint for Dentist */}
-      <div className="flex items-center justify-between bg-slate-950/70 px-3 py-2 rounded-xl border border-slate-800/80 text-xs">
-        <div className="flex items-center gap-2 text-slate-300">
-          <Pipette className="w-4 h-4 text-cyan-400" />
+      <div className="flex items-center justify-between bg-neutral-50 px-3 py-2 rounded-xl border border-neutral-200 text-xs">
+        <div className="flex items-center gap-2 text-neutral-600">
+          <Pipette className="w-4 h-4 text-teal-600" />
           <span>Click anywhere on the tooth or select a zone:</span>
         </div>
 
@@ -325,8 +291,8 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
             }}
             className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
               activeZoneFilter === "cervical"
-                ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
-                : "bg-slate-800 text-amber-300 hover:bg-slate-700 border border-amber-500/30"
+                ? "bg-amber-500 text-white font-bold shadow-sm"
+                : "bg-neutral-100 text-amber-700 hover:bg-neutral-200 border border-amber-500/30"
             }`}
           >
             Gingival 1/3
@@ -347,8 +313,8 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
             }}
             className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
               activeZoneFilter === "middle"
-                ? "bg-cyan-500 text-slate-950 font-bold shadow-sm"
-                : "bg-slate-800 text-cyan-300 hover:bg-slate-700 border border-cyan-500/30"
+                ? "bg-teal-600 text-white font-bold shadow-sm"
+                : "bg-neutral-100 text-teal-700 hover:bg-neutral-200 border border-teal-600/30"
             }`}
           >
             Body (Core)
@@ -369,8 +335,8 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
             }}
             className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
               activeZoneFilter === "incisal"
-                ? "bg-blue-500 text-slate-950 font-bold shadow-sm"
-                : "bg-slate-800 text-blue-300 hover:bg-slate-700 border border-blue-500/30"
+                ? "bg-teal-600 text-white font-bold shadow-sm"
+                : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-200"
             }`}
           >
             Incisal Edge
@@ -381,7 +347,7 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
       {/* Main Canvas Viewport */}
       <div 
         ref={containerRef}
-        className="relative mx-auto bg-black rounded-xl overflow-hidden border border-slate-800 shadow-inner max-w-full flex items-center justify-center cursor-crosshair group"
+        className="relative mx-auto bg-black rounded-xl overflow-hidden border border-neutral-200 shadow-inner max-w-full flex items-center justify-center cursor-crosshair group"
       >
         <canvas
           ref={canvasRef}
@@ -402,25 +368,25 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
               top: `${(sampledPoint.y / canvasHeight) * 100}%`,
             }}
           >
-            <div className="w-6 h-6 rounded-full border-2 border-cyan-400 ring-2 ring-cyan-500/40 animate-ping absolute" />
-            <div className="w-5 h-5 rounded-full border-2 border-white bg-cyan-500/30 flex items-center justify-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-cyan-300" />
+            <div className="w-6 h-6 rounded-full border-2 border-teal-600 ring-2 ring-teal-600/40 animate-ping absolute" />
+            <div className="w-5 h-5 rounded-full border-2 border-white bg-teal-600/30 flex items-center justify-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-teal-700" />
             </div>
           </div>
         )}
 
         {/* Live Hover Lens Badge */}
         {hoverColor && (
-          <div className="absolute top-3 right-3 bg-slate-900/90 backdrop-blur-md border border-slate-700 rounded-xl p-2 text-xs flex items-center gap-2.5 shadow-xl pointer-events-none">
+          <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md border border-neutral-300 rounded-xl p-2 text-xs flex items-center gap-2.5 shadow-sm pointer-events-none">
             <div
               className="w-5 h-5 rounded-md border border-white/20 shadow-inner shrink-0"
               style={{ backgroundColor: hoverColor.rgb.hex }}
             />
             <div className="font-mono text-[11px] space-y-0.5">
-              <div className="text-slate-200 font-semibold">
+              <div className="text-neutral-800 font-semibold">
                 L*:{hoverColor.lab.L.toFixed(1)} a*:{hoverColor.lab.a.toFixed(1)} b*:{hoverColor.lab.b.toFixed(1)}
               </div>
-              <div className="text-slate-400 text-[10px]">
+              <div className="text-neutral-500 text-[10px]">
                 {hoverColor.rgb.hex.toUpperCase()} &bull; C*:{hoverColor.lab.chroma?.toFixed(1)}
               </div>
             </div>
@@ -429,73 +395,113 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
 
         {/* Calibration Sampling Banner Notice */}
         {isCalibratingMode && (
-          <div className="absolute top-3 left-3 bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 animate-bounce shadow-lg">
+          <div className="absolute top-3 left-3 bg-amber-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 animate-bounce shadow-sm">
             <Target className="w-4 h-4" />
             <span>Click on the 18% Gray Reference Patch to Calibrate</span>
           </div>
         )}
       </div>
 
-      {/* Canvas Bottom Sub-Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-slate-800/40 p-3 rounded-xl border border-slate-800">
-        {/* Pixel ROI Sampling Size */}
-        <div className="flex items-center gap-2">
-          <Pipette className="w-4 h-4 text-cyan-400" />
-          <span className="text-slate-400">ROI Sample Window:</span>
-          <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700">
-            {[1, 3, 5, 15].map((size) => (
-              <button
-                key={size}
-                onClick={() => setSampleRadius(size)}
-                className={`px-2 py-0.5 rounded text-[11px] font-mono font-medium transition ${
-                  sampleRadius === size
-                    ? "bg-cyan-600 text-white"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {size}&times;{size}px
-              </button>
-            ))}
+      {/* Calibration status — always visible, it affects color accuracy */}
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-neutral-100 p-3 rounded-xl border border-neutral-200">
+        <span className="text-neutral-500">18% gray card:</span>
+        {isCalibrated ? (
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 text-emerald-700 font-semibold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/30">
+              <ShieldCheck className="w-3.5 h-3.5" /> Calibrated (D65)
+            </span>
+            <button
+              onClick={onResetCalibration}
+              className="text-neutral-500 hover:text-neutral-900 p-1 rounded bg-white border border-neutral-300"
+              title="Reset calibration multipliers"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <button
+              id="btn-auto-calibrate-gray"
+              onClick={handleQuickAutoCalibrate}
+              className="flex items-center gap-1 bg-white hover:bg-neutral-50 text-neutral-800 px-2.5 py-1 rounded-lg border border-neutral-300 transition font-medium"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-600" />
+              <span>Auto-calibrate</span>
+            </button>
+            <button
+              id="btn-manual-calibrate-gray"
+              onClick={() => setIsCalibratingMode(true)}
+              className="flex items-center gap-1 bg-teal-50 hover:bg-teal-100 text-teal-700 px-2.5 py-1 rounded-lg border border-teal-600/40 transition font-medium"
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span>Manual sample</span>
+            </button>
+          </div>
+        )}
+      </div>
 
-        {/* Gray Reference Card Calibration Controls */}
-        <div className="flex items-center gap-2">
-          <span className="text-slate-400">18% Gray Card:</span>
-          {isCalibrated ? (
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/30">
-                <ShieldCheck className="w-3.5 h-3.5" /> Calibrated (D65)
-              </span>
-              <button
-                onClick={onResetCalibration}
-                className="text-slate-400 hover:text-white p-1 rounded bg-slate-800 border border-slate-700"
-                title="Reset Calibration Multipliers"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-              </button>
+      {/* Progressive disclosure: power-user imaging controls, tucked away by default */}
+      <div className="border-t border-neutral-200 pt-3">
+        <button
+          onClick={() => setShowAdvancedImaging((v) => !v)}
+          className="flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-800 transition"
+        >
+          <Sliders className="w-3.5 h-3.5" />
+          <span>Advanced imaging options</span>
+          <span className="text-neutral-400">{showAdvancedImaging ? "– hide" : "+ show"}</span>
+        </button>
+
+        {showAdvancedImaging && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <button
+              id="btn-toggle-zones"
+              onClick={() => setShowZones(!showZones)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-medium transition border ${
+                showZones
+                  ? "bg-teal-600/10 border-teal-600/40 text-teal-700 font-bold"
+                  : "bg-neutral-100 border-neutral-300 text-neutral-500"
+              }`}
+              title="Toggle cervical, middle, and incisal zone guides"
+            >
+              {showZones ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              <span>Zone lines</span>
+            </button>
+
+            <button
+              id="btn-toggle-heatmap"
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-medium transition border ${
+                showHeatmap
+                  ? "bg-neutral-900 border-neutral-900 text-white font-bold"
+                  : "bg-neutral-100 border-neutral-300 text-neutral-500"
+              }`}
+              title="Toggle ΔE color distribution heatmap"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>ΔE heatmap</span>
+            </button>
+
+            <div className="flex items-center gap-2 pl-1">
+              <Pipette className="w-4 h-4 text-neutral-400" />
+              <span className="text-neutral-500">Sample window:</span>
+              <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-lg border border-neutral-300">
+                {[1, 3, 5, 15].map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setSampleRadius(size)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-mono font-medium transition ${
+                      sampleRadius === size
+                        ? "bg-teal-600 text-white"
+                        : "text-neutral-500 hover:text-neutral-800"
+                    }`}
+                  >
+                    {size}&times;{size}px
+                  </button>
+                ))}
+              </div>
             </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                id="btn-auto-calibrate-gray"
-                onClick={handleQuickAutoCalibrate}
-                className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 transition font-medium"
-              >
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <span>Auto-Calibrate</span>
-              </button>
-              <button
-                id="btn-manual-calibrate-gray"
-                onClick={() => setIsCalibratingMode(true)}
-                className="flex items-center gap-1 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 px-2.5 py-1 rounded-lg border border-cyan-500/40 transition font-medium"
-              >
-                <Target className="w-3.5 h-3.5" />
-                <span>Manual Sample</span>
-              </button>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -353,7 +353,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-neutral-50 text-neutral-900 flex flex-col font-sans selection:bg-teal-600 selection:text-white">
       {/* Navigation Bar */}
       <Navbar
         checklist={checklist}

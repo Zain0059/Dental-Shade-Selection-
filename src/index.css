@@ -1,1 +1,49 @@
 @import "tailwindcss";
+
+/* ==========================================================================
+   TabibShade Design Tokens — Premium Clinical Minimalism
+   One neutral scale, one clinical accent (teal), status colors used sparingly.
+   ========================================================================== */
+@theme {
+  --font-sans: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Restrained clinical accent (deep teal) */
+  --color-teal-50: #f0f9f8;
+  --color-teal-100: #dbeeec;
+  --color-teal-500: #0d7d78;
+  --color-teal-600: #0b6b66;
+  --color-teal-700: #0a5854;
+
+  --radius-card: 16px;
+  --radius-control: 10px;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Consistent focus ring across the app for accessibility */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-teal-500);
+  outline-offset: 2px;
+}
+
+/* Minimum comfortable touch target on touch devices */
+@media (pointer: coarse) {
+  button, select, input[type="checkbox"] {
+    min-height: 40px;
+  }
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }

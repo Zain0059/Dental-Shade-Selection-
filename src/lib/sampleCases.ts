@@ -81,7 +81,8 @@ export function drawToothOnCanvas(
   polarized: boolean,
   calibrationFactor: { r: number; g: number; b: number } = { r: 1, g: 1, b: 1 },
   showZonesOverlay = false,
-  showHeatmap = false
+  showHeatmap = false,
+  enhanceMamelonContrast = false
 ) {
   ctx.save();
   ctx.clearRect(0, 0, width, height);
@@ -169,13 +170,19 @@ export function drawToothOnCanvas(
   ctx.fillStyle = toothGrad;
   ctx.fill();
 
-  // Internal Dentin Lobes & Mamelons (Revealed by Cross-Polarization)
-  if (polarized) {
+  // Internal Dentin Lobes & Mamelons (Revealed by Cross-Polarization or Mamelon Contrast Mode)
+  if (polarized || enhanceMamelonContrast) {
     // Lobes: Mesial, Central, Distal Mamelons
     const mamelonGrad = ctx.createLinearGradient(toothX, toothY + toothH * 0.5, toothX, toothY + toothH * 0.95);
-    mamelonGrad.addColorStop(0, "rgba(225, 178, 110, 0.5)");
-    mamelonGrad.addColorStop(0.7, "rgba(240, 195, 130, 0.7)");
-    mamelonGrad.addColorStop(1, "rgba(255, 230, 180, 0.2)");
+    if (enhanceMamelonContrast) {
+      mamelonGrad.addColorStop(0, "rgba(220, 140, 50, 0.7)");
+      mamelonGrad.addColorStop(0.65, "rgba(255, 185, 90, 0.95)");
+      mamelonGrad.addColorStop(1, "rgba(255, 235, 170, 0.45)");
+    } else {
+      mamelonGrad.addColorStop(0, "rgba(225, 178, 110, 0.5)");
+      mamelonGrad.addColorStop(0.7, "rgba(240, 195, 130, 0.7)");
+      mamelonGrad.addColorStop(1, "rgba(255, 230, 180, 0.2)");
+    }
 
     ctx.save();
     ctx.clip();
@@ -185,25 +192,62 @@ export function drawToothOnCanvas(
     ctx.ellipse(toothX, toothY + toothH * 0.82, toothW * 0.08, toothH * 0.14, 0, 0, Math.PI * 2);
     ctx.fillStyle = mamelonGrad;
     ctx.fill();
+    if (enhanceMamelonContrast) {
+      ctx.strokeStyle = "rgba(255, 220, 140, 0.85)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
 
     // Mesial mamelon lobe
     ctx.beginPath();
     ctx.ellipse(toothX - toothW * 0.18, toothY + toothH * 0.84, toothW * 0.07, toothH * 0.12, -0.08, 0, Math.PI * 2);
     ctx.fill();
+    if (enhanceMamelonContrast) {
+      ctx.strokeStyle = "rgba(255, 220, 140, 0.85)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
 
     // Distal mamelon lobe
     ctx.beginPath();
     ctx.ellipse(toothX + toothW * 0.18, toothY + toothH * 0.84, toothW * 0.07, toothH * 0.12, 0.08, 0, Math.PI * 2);
     ctx.fill();
+    if (enhanceMamelonContrast) {
+      ctx.strokeStyle = "rgba(255, 220, 140, 0.85)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
 
     // Opalescent bluish enamel halo window at incisal edge
     const opalGrad = ctx.createLinearGradient(toothX, toothY + toothH * 0.88, toothX, toothY + toothH);
-    opalGrad.addColorStop(0, "rgba(165, 195, 225, 0.45)");
-    opalGrad.addColorStop(0.5, "rgba(140, 180, 220, 0.35)");
-    opalGrad.addColorStop(1, "rgba(245, 225, 180, 0.3)"); // Amber halo rim
+    if (enhanceMamelonContrast) {
+      opalGrad.addColorStop(0, "rgba(120, 180, 240, 0.75)");
+      opalGrad.addColorStop(0.5, "rgba(90, 160, 235, 0.6)");
+      opalGrad.addColorStop(1, "rgba(255, 210, 130, 0.7)"); // Boosted Amber halo rim
+    } else {
+      opalGrad.addColorStop(0, "rgba(165, 195, 225, 0.45)");
+      opalGrad.addColorStop(0.5, "rgba(140, 180, 220, 0.35)");
+      opalGrad.addColorStop(1, "rgba(245, 225, 180, 0.3)"); // Amber halo rim
+    }
 
     ctx.fillStyle = opalGrad;
     ctx.fillRect(toothX - toothW * 0.5, toothY + toothH * 0.88, toothW, toothH * 0.12);
+
+    // If contrast enhancement is active, draw sharp translucent window edge contour
+    if (enhanceMamelonContrast) {
+      ctx.strokeStyle = "rgba(147, 197, 253, 0.8)";
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(toothX - toothW * 0.42, toothY + toothH * 0.88);
+      ctx.bezierCurveTo(
+        toothX - toothW * 0.2, toothY + toothH * 0.87,
+        toothX + toothW * 0.2, toothY + toothH * 0.87,
+        toothX + toothW * 0.42, toothY + toothH * 0.88
+      );
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
     // Subtle natural hypocalcification micro-speckle (fluorosis spot)
     ctx.beginPath();
@@ -212,7 +256,9 @@ export function drawToothOnCanvas(
     ctx.fill();
 
     ctx.restore();
-  } else {
+  }
+
+  if (!polarized && !enhanceMamelonContrast) {
     // Non-Polarized: Specular Flash Reflections & Surface Glare
     ctx.save();
     ctx.clip();

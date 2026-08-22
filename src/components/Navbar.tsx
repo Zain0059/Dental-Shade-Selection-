@@ -1,14 +1,14 @@
 import React from "react";
-import { 
-  Sparkles, 
-  FileText, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Camera, 
-  Upload, 
+import {
+  Sparkles,
+  FileText,
+  CheckCircle2,
+  AlertTriangle,
+  Camera,
+  Upload,
   Stethoscope,
   Microscope,
-  Compass
+  Compass,
 } from "lucide-react";
 import { ClinicalProtocolChecklist } from "../types/dental";
 
@@ -24,6 +24,12 @@ interface NavbarProps {
   onToggleViewMode: (mode: "guided" | "chairside" | "advanced") => void;
 }
 
+const MODES: { key: "guided" | "chairside" | "advanced"; label: string; shortLabel: string; icon: React.ElementType }[] = [
+  { key: "guided", label: "Guided Flow", shortLabel: "Guided", icon: Compass },
+  { key: "chairside", label: "Chairside Quick View", shortLabel: "Chairside", icon: Stethoscope },
+  { key: "advanced", label: "Lab & Colorimetry", shortLabel: "Lab", icon: Microscope },
+];
+
 export const Navbar: React.FC<NavbarProps> = ({
   checklist,
   onOpenChecklist,
@@ -35,137 +41,110 @@ export const Navbar: React.FC<NavbarProps> = ({
   viewMode,
   onToggleViewMode,
 }) => {
-  const allChecklistPassed = 
-    checklist.hydrationChecked && 
-    checklist.daylightLighting5500KChecked && 
-    checklist.neutralBibChecked && 
+  const allChecklistPassed =
+    checklist.hydrationChecked &&
+    checklist.daylightLighting5500KChecked &&
+    checklist.neutralBibChecked &&
     checklist.lipstickRemovedChecked;
 
   return (
-    <header id="app-header" className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40 px-4 lg:px-6 py-2.5">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-        {/* Brand & Identity */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-md shadow-cyan-500/20 text-white font-bold text-base">
+    <header id="app-header" className="bg-white border-b border-neutral-200 sticky top-0 z-40">
+      {/* Row 1 — identity + protocol status + primary action. Always one line, compact. */}
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 lg:px-6 h-14">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 shrink-0 rounded-lg bg-teal-600 flex items-center justify-center text-white font-semibold text-sm">
             DS
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-bold text-base text-slate-100 tracking-tight">Dental Shade Engine</h1>
-              <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-[10px] px-1.5 py-0.2 rounded font-mono font-medium">
-                VITA &bull; D65
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400">Chairside Shade Matching &amp; Lab Work Order</p>
+          <div className="min-w-0">
+            <h1 className="font-semibold text-[15px] text-neutral-900 tracking-tight leading-tight truncate">
+              Dental Shade Engine
+            </h1>
+            <p className="text-[11px] text-neutral-500 leading-tight hidden sm:block">
+              VITA &bull; D65 Daylight Reference
+            </p>
           </div>
         </div>
 
-        {/* View Mode Switcher (Guided Flow Wizard vs Chairside vs Lab / Colorimetry) */}
-        <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 shadow-inner gap-1">
-          <button
-            id="btn-mode-guided"
-            onClick={() => onToggleViewMode("guided")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-              viewMode === "guided"
-                ? "bg-cyan-500 text-slate-950 shadow-md font-extrabold"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Compass className="w-3.5 h-3.5" />
-            <span>Guided Flow (3-Step Wizard)</span>
-          </button>
-
-          <button
-            id="btn-mode-chairside"
-            onClick={() => onToggleViewMode("chairside")}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
-              viewMode === "chairside"
-                ? "bg-cyan-500 text-slate-950 shadow-md font-bold"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Stethoscope className="w-3.5 h-3.5" />
-            <span>Chairside Quick View</span>
-          </button>
-
-          <button
-            id="btn-mode-advanced"
-            onClick={() => onToggleViewMode("advanced")}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
-              viewMode === "advanced"
-                ? "bg-blue-600 text-white shadow-md font-bold"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Microscope className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Lab &amp; Colorimetry</span>
-            <span className="sm:hidden">Lab</span>
-          </button>
-        </div>
-
-        {/* Right Action Badges */}
-        <div className="flex items-center flex-wrap gap-2">
-          {/* Clinical Protocol Indicator */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Protocol status — informational, not a call to action */}
           <button
             id="btn-protocol-checklist"
             onClick={onOpenChecklist}
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition ${
+            className={`hidden sm:flex items-center gap-1.5 text-xs px-2.5 h-9 rounded-lg border transition ${
               allChecklistPassed
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
-                : "bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
             }`}
-            title="Hydration & Lighting Protocol"
+            title="Hydration & lighting protocol"
           >
             {allChecklistPassed ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <CheckCircle2 className="w-3.5 h-3.5" />
             ) : (
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+              <AlertTriangle className="w-3.5 h-3.5" />
             )}
-            <span className="font-medium hidden sm:inline">
-              {allChecklistPassed ? "Protocol OK" : "Protocol Check"}
-            </span>
+            <span className="font-medium">{allChecklistPassed ? "Protocol OK" : "Check protocol"}</span>
           </button>
 
-          {/* Camera Settings Helper */}
+          {/* Single primary action for the whole bar */}
+          <button
+            id="btn-lab-prescription"
+            onClick={onOpenLabPrescription}
+            className="flex items-center gap-1.5 text-xs px-3.5 h-9 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-medium transition"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Lab Order</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Row 2 — workflow switcher (left) + secondary utility icons (right). Scrolls, never wraps. */}
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 px-4 lg:px-6 pb-2.5 -mt-0.5">
+        <div className="flex items-center bg-neutral-100 p-0.5 rounded-lg gap-0.5 overflow-x-auto">
+          {MODES.map((mode) => {
+            const Icon = mode.icon;
+            const active = viewMode === mode.key;
+            return (
+              <button
+                key={mode.key}
+                id={`btn-mode-${mode.key}`}
+                onClick={() => onToggleViewMode(mode.key)}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 h-8 rounded-md text-xs font-medium whitespace-nowrap transition ${
+                  active ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-800"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">{mode.label}</span>
+                <span className="md:hidden">{mode.shortLabel}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
           <button
             id="btn-camera-guide"
             onClick={onOpenCameraGuide}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition"
-            title="Recommended Smartphone Camera Settings: 1/125s, f/22, ISO 100"
+            className="flex items-center justify-center w-9 h-9 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition"
+            title="Recommended camera settings"
           >
-            <Camera className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">Camera</span>
+            <Camera className="w-4 h-4" />
           </button>
-
-          {/* Custom Photo Upload */}
           <button
             id="btn-upload-photo"
             onClick={onUploadClick}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition"
+            className="flex items-center justify-center w-9 h-9 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition"
+            title="Upload patient photo"
           >
-            <Upload className="w-3.5 h-3.5 text-slate-400" />
-            <span>Upload</span>
+            <Upload className="w-4 h-4" />
           </button>
-
-          {/* AI Master Ceramist Button */}
           <button
             id="btn-ai-analysis"
             onClick={onOpenAiAnalysis}
             disabled={isAiLoading}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold shadow-md shadow-blue-500/20 transition disabled:opacity-50"
+            className="flex items-center justify-center w-9 h-9 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition disabled:opacity-50"
+            title={isAiLoading ? "Analyzing…" : "AI Ceramist assistant"}
           >
-            <Sparkles className={`w-3.5 h-3.5 ${isAiLoading ? "animate-spin" : "text-cyan-200"}`} />
-            <span>{isAiLoading ? "Analyzing..." : "AI Ceramist"}</span>
-          </button>
-
-          {/* Dental Lab Work Order Button */}
-          <button
-            id="btn-lab-prescription"
-            onClick={onOpenLabPrescription}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold shadow-md shadow-cyan-500/20 transition"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Lab Order</span>
+            <Sparkles className={`w-4 h-4 ${isAiLoading ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>

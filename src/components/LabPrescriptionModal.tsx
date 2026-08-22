@@ -101,25 +101,25 @@ Illuminant: D65 Standard (5500K - 6500K, CRI > 90)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
       <div 
         id="modal-lab-prescription"
-        className="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full p-6 text-slate-100 shadow-2xl relative max-h-[90vh] overflow-y-auto"
+        className="bg-white border border-neutral-300 rounded-t-2xl sm:rounded-2xl max-w-3xl w-full p-6 text-neutral-900 shadow-2xl relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-slate-800">
+        <div className="flex items-start justify-between pb-4 border-b border-neutral-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+            <div className="w-10 h-10 rounded-xl bg-teal-600/10 border border-teal-600/30 flex items-center justify-center text-teal-600">
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-100">Laboratory Ceramic Prescription</h2>
-              <p className="text-xs text-slate-400">Standardized Work Order for Dental Master Ceramists</p>
+              <h2 className="text-lg font-bold text-neutral-900">Laboratory Ceramic Prescription</h2>
+              <p className="text-xs text-neutral-500">Standardized Work Order for Dental Master Ceramists</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -128,51 +128,51 @@ Illuminant: D65 Standard (5500K - 6500K, CRI > 90)
         {/* Printable / Viewable Work Order Content */}
         <div className="mt-5 space-y-4 text-xs">
           {/* Top Case Summary Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/80">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-neutral-100 p-3.5 rounded-xl border border-neutral-300">
             <div>
-              <div className="text-[10px] text-slate-400 uppercase font-mono">Patient / Tooth</div>
-              <div className="text-sm font-bold text-slate-100">{currentCase.patientInitials} &bull; {currentCase.toothNumber}</div>
+              <div className="text-[10px] text-neutral-500 uppercase font-mono">Patient / Tooth</div>
+              <div className="text-sm font-bold text-neutral-900">{currentCase.patientInitials} &bull; {currentCase.toothNumber}</div>
             </div>
             <div>
-              <div className="text-[10px] text-slate-400 uppercase font-mono">Restoration</div>
-              <div className="text-sm font-bold text-slate-100 capitalize">{substrate.restorationType.replace("_", " ")}</div>
+              <div className="text-[10px] text-neutral-500 uppercase font-mono">Restoration</div>
+              <div className="text-sm font-bold text-neutral-900 capitalize">{substrate.restorationType.replace("_", " ")}</div>
             </div>
             <div>
-              <div className="text-[10px] text-slate-400 uppercase font-mono">Material &amp; Thickness</div>
-              <div className="text-sm font-bold text-cyan-400">{substrate.thicknessMm} mm</div>
+              <div className="text-[10px] text-neutral-500 uppercase font-mono">Material &amp; Thickness</div>
+              <div className="text-sm font-bold text-teal-600">{substrate.thicknessMm} mm</div>
             </div>
             <div>
-              <div className="text-[10px] text-slate-400 uppercase font-mono">Prep Die Shade</div>
-              <div className="text-sm font-bold text-amber-300 font-mono">{substrate.prepShade}</div>
+              <div className="text-[10px] text-neutral-500 uppercase font-mono">Prep Die Shade</div>
+              <div className="text-sm font-bold text-amber-700 font-mono">{substrate.prepShade}</div>
             </div>
           </div>
 
           {/* Colorimetric Target & Match */}
-          <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div className="bg-neutral-100 p-4 rounded-xl border border-neutral-200 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-200">Target Color Match:</span>
-              <span className="font-mono text-cyan-300 font-bold text-sm">{targetMatch.shade.name} ({targetMatch.shade.code})</span>
+              <span className="font-bold text-neutral-800">Target Color Match:</span>
+              <span className="font-mono text-teal-700 font-bold text-sm">{targetMatch.shade.name} ({targetMatch.shade.code})</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-700/60 font-mono text-[11px] text-slate-300">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-neutral-300/60 font-mono text-[11px] text-neutral-600">
               <div>L*: <strong>{sampledLab.L.toFixed(1)}</strong></div>
               <div>a*: <strong>{sampledLab.a.toFixed(1)}</strong></div>
               <div>b*: <strong>{sampledLab.b.toFixed(1)}</strong></div>
-              <div>ΔE₀₀: <strong className="text-emerald-400">{targetMatch.deltaE00.toFixed(2)}</strong></div>
+              <div>ΔE₀₀: <strong className="text-emerald-600">{targetMatch.deltaE00.toFixed(2)}</strong></div>
             </div>
-            <div className="text-[11px] text-slate-400 font-mono">
+            <div className="text-[11px] text-neutral-500 font-mono">
               Munsell System: <strong>{munsell.notation}</strong> (Value Priority Index: {munsell.value.toFixed(1)}/10)
             </div>
           </div>
 
           {/* 3-Zone Layering Prescription Table */}
           <div className="space-y-2">
-            <div className="font-bold text-slate-200 flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-cyan-400" />
+            <div className="font-bold text-neutral-800 flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-teal-600" />
               <span>3-Zone Anatomical Layering Table</span>
             </div>
-            <div className="border border-slate-800 rounded-xl overflow-hidden">
+            <div className="border border-neutral-200 rounded-xl overflow-hidden">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-800 text-slate-400 font-mono text-[10px] uppercase">
+                <thead className="bg-neutral-100 text-neutral-500 font-mono text-[10px] uppercase">
                   <tr>
                     <th className="p-2.5">Zone</th>
                     <th className="p-2.5">Shade Code</th>
@@ -180,24 +180,24 @@ Illuminant: D65 Standard (5500K - 6500K, CRI > 90)
                     <th className="p-2.5">Characteristics</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800 bg-slate-900/60">
+                <tbody className="divide-y divide-neutral-200 bg-white/60">
                   <tr>
-                    <td className="p-2.5 font-bold text-amber-300">Cervical 1/3</td>
-                    <td className="p-2.5 font-mono font-bold text-slate-100">{zones.cervical.matchedClassical.shade.code}</td>
-                    <td className="p-2.5 font-mono text-slate-400">{zones.cervical.sampledLab.L.toFixed(1)} / +{zones.cervical.sampledLab.a.toFixed(1)} / +{zones.cervical.sampledLab.b.toFixed(1)}</td>
-                    <td className="p-2.5 text-slate-300">High chroma saturation (+b*), warm ochre modifier</td>
+                    <td className="p-2.5 font-bold text-amber-700">Cervical 1/3</td>
+                    <td className="p-2.5 font-mono font-bold text-neutral-900">{zones.cervical.matchedClassical.shade.code}</td>
+                    <td className="p-2.5 font-mono text-neutral-500">{zones.cervical.sampledLab.L.toFixed(1)} / +{zones.cervical.sampledLab.a.toFixed(1)} / +{zones.cervical.sampledLab.b.toFixed(1)}</td>
+                    <td className="p-2.5 text-neutral-600">High chroma saturation (+b*), warm ochre modifier</td>
                   </tr>
                   <tr>
-                    <td className="p-2.5 font-bold text-cyan-300">Middle Body 1/3</td>
-                    <td className="p-2.5 font-mono font-bold text-slate-100">{zones.middle.matchedClassical.shade.code}</td>
-                    <td className="p-2.5 font-mono text-slate-400">{zones.middle.sampledLab.L.toFixed(1)} / +{zones.middle.sampledLab.a.toFixed(1)} / +{zones.middle.sampledLab.b.toFixed(1)}</td>
-                    <td className="p-2.5 text-slate-300">True base dentin core, dominant aesthetic value</td>
+                    <td className="p-2.5 font-bold text-teal-700">Middle Body 1/3</td>
+                    <td className="p-2.5 font-mono font-bold text-neutral-900">{zones.middle.matchedClassical.shade.code}</td>
+                    <td className="p-2.5 font-mono text-neutral-500">{zones.middle.sampledLab.L.toFixed(1)} / +{zones.middle.sampledLab.a.toFixed(1)} / +{zones.middle.sampledLab.b.toFixed(1)}</td>
+                    <td className="p-2.5 text-neutral-600">True base dentin core, dominant aesthetic value</td>
                   </tr>
                   <tr>
-                    <td className="p-2.5 font-bold text-blue-300">Incisal 1/3</td>
-                    <td className="p-2.5 font-mono font-bold text-slate-100">{zones.incisal.matchedClassical.shade.code}</td>
-                    <td className="p-2.5 font-mono text-slate-400">{zones.incisal.sampledLab.L.toFixed(1)} / {zones.incisal.sampledLab.a.toFixed(1)} / +{zones.incisal.sampledLab.b.toFixed(1)}</td>
-                    <td className="p-2.5 text-slate-300">Opalescent enamel (OE1), mamelon lobes, amber rim</td>
+                    <td className="p-2.5 font-bold text-neutral-700">Incisal 1/3</td>
+                    <td className="p-2.5 font-mono font-bold text-neutral-900">{zones.incisal.matchedClassical.shade.code}</td>
+                    <td className="p-2.5 font-mono text-neutral-500">{zones.incisal.sampledLab.L.toFixed(1)} / {zones.incisal.sampledLab.a.toFixed(1)} / +{zones.incisal.sampledLab.b.toFixed(1)}</td>
+                    <td className="p-2.5 text-neutral-600">Opalescent enamel (OE1), mamelon lobes, amber rim</td>
                   </tr>
                 </tbody>
               </table>
@@ -205,42 +205,42 @@ Illuminant: D65 Standard (5500K - 6500K, CRI > 90)
           </div>
 
           {/* Ceramic Recipe & Ingot Details */}
-          <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/80 space-y-2.5">
-            <div className="font-bold text-cyan-300 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
+          <div className="bg-neutral-100/50 p-4 rounded-xl border border-neutral-300 space-y-2.5">
+            <div className="font-bold text-teal-700 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-teal-600" />
               <span>Ceramic Layering &amp; Ingot Recipe</span>
             </div>
-            <div className="space-y-1.5 text-slate-300">
-              <p><strong>Substructure Ingot:</strong> <span className="font-mono text-cyan-300">{recipe.recommendedIngot}</span> (Opacity: {recipe.recommendedOpacity})</p>
+            <div className="space-y-1.5 text-neutral-600">
+              <p><strong>Substructure Ingot:</strong> <span className="font-mono text-teal-700">{recipe.recommendedIngot}</span> (Opacity: {recipe.recommendedOpacity})</p>
               <p><strong>Cervical Characterization:</strong> {recipe.cervicalRecipe}</p>
               <p><strong>Body Dentin:</strong> {recipe.bodyRecipe}</p>
               <p><strong>Incisal &amp; Opal Enamel:</strong> {recipe.incisalRecipe}</p>
-              <p className="text-[11px] text-slate-400"><strong>Firing Profile:</strong> {recipe.firingAdvice}</p>
+              <p className="text-[11px] text-neutral-500"><strong>Firing Profile:</strong> {recipe.firingAdvice}</p>
             </div>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between gap-3">
+        <div className="mt-6 pt-4 border-t border-neutral-200 flex items-center justify-between gap-3">
           <button
             onClick={handleCopyText}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium transition"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-neutral-800 text-xs font-medium transition"
           >
-            {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+            {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
             <span>{copied ? "Copied to Clipboard!" : "Copy Work Order"}</span>
           </button>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium transition"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-neutral-800 text-xs font-medium transition"
             >
               <Printer className="w-4 h-4" />
               <span>Print Slip</span>
             </button>
             <button
               onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium shadow-lg shadow-cyan-600/20 transition"
+              className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium shadow-sm  transition"
             >
               Done
             </button>
