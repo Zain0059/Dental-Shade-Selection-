@@ -1,0 +1,6 @@
+{
+  "name": "Dental Shade-Selection Engine",
+  "description": "Clinical colorimetry, CIELAB & Munsell analysis, cross-polarization glare reduction, and lab ceramic recipe generator for dental restorations.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
