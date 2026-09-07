@@ -48,6 +48,28 @@ app.post("/api/ai/analyze-tooth", async (req, res) => {
     imageBase64,
   } = req.body;
 
+  // Runtime Input Validation
+  if (cielabData) {
+    const { L, a, b } = cielabData;
+    if (
+      (L !== undefined && (!Number.isFinite(L) || L < 0 || L > 100)) ||
+      (a !== undefined && (!Number.isFinite(a) || a < -128 || a > 128)) ||
+      (b !== undefined && (!Number.isFinite(b) || b < -128 || b > 128))
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid CIELAB measurement data. L* must be [0..100] and a*, b* must be finite coordinates.",
+      });
+    }
+  }
+
+  if (imageBase64 && typeof imageBase64 === "string" && imageBase64.length > 20 * 1024 * 1024) {
+    return res.status(413).json({
+      success: false,
+      error: "Image payload exceeds maximum allowable payload size (15 MB).",
+    });
+  }
+
   // Helper for deterministic clinical formulation
   const buildDeterministicAnalysis = (notice?: string) => {
     const isDarkSubstrate = substrate === "ND4" || substrate === "ND5" || substrate === "ND6" || substrate === "ND7" || substrate === "ND8" || substrate === "ND9";
@@ -96,7 +118,7 @@ app.post("/api/ai/analyze-tooth", async (req, res) => {
       },
       trafficLight: {
         status: "green" as const,
-        confidenceScore: 95,
+        similarityScore: 95,
         rationale: "Quantified CIEDE2000 color difference is within clinically optimal threshold (ΔE00 < 1.6) with adequate substrate opacity masking.",
       },
       clinicalRecommendations: [

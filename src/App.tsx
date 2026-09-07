@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useReducer, useMemo } from "react";
 import { 
   CIELABColor, 
   ClinicalCase, 
@@ -21,6 +21,21 @@ import {
   translateLabToMunsell, 
   applyCalibration 
 } from "./lib/colorScience";
+import { 
+  validateImageUpload, 
+  validateAiAnalysisResponse 
+} from "./lib/validationSchemas";
+import { 
+  caseReducer, 
+  createInitialState 
+} from "./store/caseStore";
+import { 
+  CheckCircle2, 
+  AlertTriangle, 
+  AlertCircle, 
+  Info, 
+  X 
+} from "lucide-react";
 import { Navbar } from "./components/Navbar";
 import { ToothCanvasViewer } from "./components/ToothCanvasViewer";
 import { ColorMetricsPanel } from "./components/ColorMetricsPanel";
@@ -37,49 +52,31 @@ export default function App() {
   // View Mode: "guided" (3-Step Wizard) vs "chairside" (Quick View) vs "advanced" (Lab & Colorimetry)
   const [viewMode, setViewMode] = useState<"guided" | "chairside" | "advanced">("guided");
 
-  // Active Case & Polarization state
-  const [currentCase, setCurrentCase] = useState<ClinicalCase>(CLINICAL_CASES[0]);
-  const [crossPolarized, setCrossPolarized] = useState<boolean>(true);
-  const [customImage, setCustomImage] = useState<string | null>(null);
+  // Centralized Case Store Reducer
+  const [state, dispatch] = useReducer(caseReducer, undefined, () =>
+    createInitialState(CLINICAL_CASES[0])
+  );
 
-  // Calibration State
-  const [isCalibrated, setIsCalibrated] = useState<boolean>(false);
-  const [calibrationMultipliers, setCalibrationMultipliers] = useState<{ r: number; g: number; b: number }>({
-    r: 1.0,
-    g: 1.0,
-    b: 1.0,
-  });
-
-  // Sampled Point & CIELAB Coordinates (Middle body default)
-  const [sampledPoint, setSampledPoint] = useState<{ x: number; y: number } | null>({ x: 250, y: 220 });
-  const [sampledRgb, setSampledRgb] = useState<RGBColor>({ r: 236, g: 212, b: 164, hex: "#ecd4a4" });
-  const [sampledLab, setSampledLab] = useState<CIELABColor>(() => sRGBToCIELAB(236, 212, 164));
-  const [munsell, setMunsell] = useState<MunsellColor>(() => translateLabToMunsell(sRGBToCIELAB(236, 212, 164)));
-
-  // Selected Shade Database Tab & Specific Match
-  const [activeSystemTab, setActiveSystemTab] = useState<"classical" | "3d_master" | "bleach">("classical");
-  const [selectedMatch, setSelectedMatch] = useState<ShadeMatchResult | null>(null);
-  const [activeZoneFilter, setActiveZoneFilter] = useState<"all" | "cervical" | "middle" | "incisal">("all");
-
-  // Substrate / Die Shade & Material Configuration
-  const [substrate, setSubstrate] = useState<SubstrateConfig>({
-    prepShade: currentCase.defaultPrepShade,
-    restorationType: currentCase.defaultRestoration,
-    material: currentCase.defaultMaterial,
-    thicknessMm: currentCase.defaultThickness,
-    cementShade: "Neutral",
-  });
-
-  // Clinical Protocol Checklist
-  const [checklist, setChecklist] = useState<ClinicalProtocolChecklist>({
-    hydrationChecked: true,
-    hydrationElapsedSeconds: 45,
-    daylightLighting5500KChecked: true,
-    criAbove90Checked: true,
-    neutralBibChecked: true,
-    lipstickRemovedChecked: true,
-    crossPolarizerMountedChecked: true,
-  });
+  const {
+    currentCase,
+    crossPolarized,
+    customImage,
+    isCalibrated,
+    calibrationMultipliers,
+    sampledPoint,
+    sampledRgb,
+    sampledLab,
+    munsell,
+    activeSystemTab,
+    selectedMatch,
+    activeZoneFilter,
+    substrate,
+    checklist,
+    aiResult,
+    isAiLoading,
+    notification,
+    caseSessionId,
+  } = state;
 
   // Modals & Drawers
   const [isChecklistOpen, setIsChecklistOpen] = useState(false);
@@ -87,57 +84,35 @@ export default function App() {
   const [isLabPrescriptionOpen, setIsLabPrescriptionOpen] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
 
-  // AI Master Ceramist State
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<any>(null);
+  // Auto-dismiss notification after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        dispatch({ type: "CLEAR_NOTIFICATION" });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   // Hydration protocol timer interval
   useEffect(() => {
     const timer = setInterval(() => {
-      setChecklist((prev) => ({
-        ...prev,
-        hydrationElapsedSeconds: prev.hydrationElapsedSeconds + 1,
-      }));
+      dispatch({
+        type: "UPDATE_CHECKLIST",
+        payload: { hydrationElapsedSeconds: checklist.hydrationElapsedSeconds + 1 },
+      });
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [checklist.hydrationElapsedSeconds]);
 
-  // Update substrate defaults when changing cases
+  // Select Clinical Case
   const handleSelectCase = (newCase: ClinicalCase) => {
-    setCurrentCase(newCase);
-    setCustomImage(null);
-    setSubstrate({
-      prepShade: newCase.defaultPrepShade,
-      restorationType: newCase.defaultRestoration,
-      material: newCase.defaultMaterial,
-      thicknessMm: newCase.defaultThickness,
-      cementShade: "Neutral",
-    });
+    dispatch({ type: "LOAD_CASE", payload: { caseItem: newCase } });
+  };
 
-    // Reset default sample point
-    if (newCase.id === "case-bleach-incisor") {
-      const rgb = { r: 248, g: 240, b: 220, hex: "#f8f0dc" };
-      const lab = sRGBToCIELAB(rgb.r, rgb.g, rgb.b);
-      setSampledPoint({ x: 250, y: 220 });
-      setSampledRgb(rgb);
-      setSampledLab(lab);
-      setMunsell(translateLabToMunsell(lab));
-    } else if (newCase.id === "case-dark-stump-tetracycline") {
-      const rgb = { r: 217, g: 184, b: 130, hex: "#d9b882" };
-      const lab = sRGBToCIELAB(rgb.r, rgb.g, rgb.b);
-      setSampledPoint({ x: 250, y: 220 });
-      setSampledRgb(rgb);
-      setSampledLab(lab);
-      setMunsell(translateLabToMunsell(lab));
-    } else {
-      const rgb = { r: 236, g: 212, b: 164, hex: "#ecd4a4" };
-      const lab = sRGBToCIELAB(rgb.r, rgb.g, rgb.b);
-      setSampledPoint({ x: 250, y: 220 });
-      setSampledRgb(rgb);
-      setSampledLab(lab);
-      setMunsell(translateLabToMunsell(lab));
-    }
-    setSelectedMatch(null);
+  // Start New Clinical Case Flow (Full Reset)
+  const handleStartNewCase = () => {
+    dispatch({ type: "START_NEW_CASE" });
   };
 
   // Gray Card Reference Calibration
@@ -148,20 +123,14 @@ export default function App() {
     const gMult = sampledGrayRgb.g > 0 ? target / sampledGrayRgb.g : 1.0;
     const bMult = sampledGrayRgb.b > 0 ? target / sampledGrayRgb.b : 1.0;
 
-    setCalibrationMultipliers({ r: rMult, g: gMult, b: bMult });
-    setIsCalibrated(true);
-
-    // Recompute current sample
-    const calibratedRgb = applyCalibration(sampledRgb, { r: rMult, g: gMult, b: bMult });
-    const lab = sRGBToCIELAB(calibratedRgb.r, calibratedRgb.g, calibratedRgb.b);
-    setSampledRgb(calibratedRgb);
-    setSampledLab(lab);
-    setMunsell(translateLabToMunsell(lab));
+    dispatch({
+      type: "APPLY_CALIBRATION",
+      payload: { multipliers: { r: rMult, g: gMult, b: bMult } },
+    });
   };
 
   const handleResetCalibration = () => {
-    setCalibrationMultipliers({ r: 1.0, g: 1.0, b: 1.0 });
-    setIsCalibrated(false);
+    dispatch({ type: "RESET_CALIBRATION" });
   };
 
   // Color selection from interactive canvas
@@ -170,15 +139,10 @@ export default function App() {
     rawRgb: RGBColor,
     _rawLab: CIELABColor
   ) => {
-    const rgb = isCalibrated ? applyCalibration(rawRgb, calibrationMultipliers) : rawRgb;
-    const lab = sRGBToCIELAB(rgb.r, rgb.g, rgb.b);
-    const mun = translateLabToMunsell(lab);
-
-    setSampledPoint(point);
-    setSampledRgb(rgb);
-    setSampledLab(lab);
-    setMunsell(mun);
-    setSelectedMatch(null);
+    dispatch({
+      type: "SAMPLE_POINT",
+      payload: { point, rawRgb },
+    });
   };
 
   // Top Matches for Active Point
@@ -261,17 +225,36 @@ export default function App() {
     };
   }, [sampledLab, sampledRgb, munsell, classicalMatches, threeDMatches]);
 
-  // Handle Photo Upload
+  // Handle Photo Upload with runtime validation (size & MIME type)
   const handleUploadClick = () => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*";
+    input.accept = "image/jpeg,image/png,image/webp";
     input.onchange = (e: any) => {
       const file = e.target.files?.[0];
       if (file) {
+        const validation = validateImageUpload(file);
+        if (!validation.isValid) {
+          dispatch({
+            type: "SET_NOTIFICATION",
+            payload: {
+              type: "error",
+              message: validation.errors[0] || "Invalid photograph file.",
+            },
+          });
+          return;
+        }
+
         const reader = new FileReader();
         reader.onload = (re) => {
-          setCustomImage(re.target?.result as string);
+          dispatch({
+            type: "UPLOAD_IMAGE_SUCCESS",
+            payload: {
+              imageBase64: re.target?.result as string,
+              fileName: file.name,
+              fileSizeBytes: file.size,
+            },
+          });
         };
         reader.readAsDataURL(file);
       }
@@ -279,16 +262,25 @@ export default function App() {
     input.click();
   };
 
-  // Run AI Master Ceramist Analysis
+  // Run AI Master Ceramist Analysis with timeout, cancellation & race condition protection
   const handleRunAiAnalysis = async () => {
-    setIsAiLoading(true);
+    const requestId = "req_" + Math.random().toString(36).substring(2, 9);
+    const sessionSnapshot = caseSessionId;
+
+    dispatch({ type: "START_AI_REQUEST", payload: { requestId } });
     setIsAiDrawerOpen(true);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 12000);
 
     try {
       const targetCode = selectedMatch?.shade.code || classicalMatches[0].shade.code;
       const res = await fetch("/api/ai/analyze-tooth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           cielabData: sampledLab,
           munsellData: munsell,
@@ -308,16 +300,32 @@ export default function App() {
         }),
       });
 
+      clearTimeout(timeoutId);
+
       if (!res.ok) {
         throw new Error(`Server returned status ${res.status}`);
       }
 
       const data = await res.json();
-      setAiResult(data);
+      const validation = validateAiAnalysisResponse(data);
+      if (!validation.isValid) {
+        console.warn("AI response contract warnings:", validation.errors);
+      }
+
+      dispatch({
+        type: "AI_REQUEST_SUCCESS",
+        payload: {
+          requestId,
+          sessionId: sessionSnapshot,
+          result: data,
+        },
+      });
     } catch (err: any) {
-      console.error("AI Analysis fallback triggered:", err);
+      clearTimeout(timeoutId);
+      console.warn("AI Analysis error or request cancelled, applying colorimetric fallback:", err.message);
+
       // Fallback result in UI
-      setAiResult({
+      const fallbackResult = {
         success: true,
         isAiGenerated: false,
         fallbackNotice: "High demand / offline mode: computed via local colorimetric calibration matrix.",
@@ -346,14 +354,21 @@ export default function App() {
           "Use shade-matched try-in paste prior to final resin luting.",
           "Transmit both cross-polarized and non-polarized photographs to lab ceramist.",
         ],
+      };
+
+      dispatch({
+        type: "AI_REQUEST_SUCCESS",
+        payload: {
+          requestId,
+          sessionId: sessionSnapshot,
+          result: fallbackResult,
+        },
       });
-    } finally {
-      setIsAiLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900 flex flex-col font-sans selection:bg-teal-600 selection:text-white">
+    <div className="min-h-screen bg-neutral-50 text-neutral-900 flex flex-col font-sans selection:bg-teal-600 selection:text-white overflow-x-hidden w-full">
       {/* Navigation Bar */}
       <Navbar
         checklist={checklist}
@@ -362,20 +377,52 @@ export default function App() {
         onOpenAiAnalysis={handleRunAiAnalysis}
         onOpenCameraGuide={() => setIsCameraGuideOpen(true)}
         onUploadClick={handleUploadClick}
+        onStartNewCase={handleStartNewCase}
         isAiLoading={isAiLoading}
         viewMode={viewMode}
         onToggleViewMode={setViewMode}
       />
 
       {/* Main Clinical Dashboard */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 min-w-0">
+        {/* Case Notification Banner */}
+        {notification && (
+          <div
+            id="case-notification-banner"
+            className={`mb-4 px-4 py-3 rounded-xl text-xs font-medium flex items-center justify-between shadow-sm border transition-all ${
+              notification.type === "error"
+                ? "bg-rose-50 border-rose-200 text-rose-800"
+                : notification.type === "warning"
+                ? "bg-amber-50 border-amber-200 text-amber-800"
+                : notification.type === "success"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-teal-50 border-teal-200 text-teal-800"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              {notification.type === "error" && <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />}
+              {notification.type === "warning" && <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />}
+              {notification.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />}
+              {notification.type === "info" && <Info className="w-4 h-4 shrink-0 text-teal-600" />}
+              <span>{notification.message}</span>
+            </div>
+            <button
+              onClick={() => dispatch({ type: "CLEAR_NOTIFICATION" })}
+              className="p-1 hover:opacity-75 text-neutral-400 hover:text-neutral-700 transition"
+              title="Dismiss notification"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {viewMode === "guided" ? (
           <GuidedFlowWizard
             currentCase={currentCase}
             cases={CLINICAL_CASES}
             onSelectCase={handleSelectCase}
             crossPolarized={crossPolarized}
-            onTogglePolarized={() => setCrossPolarized(!crossPolarized)}
+            onTogglePolarized={() => dispatch({ type: "TOGGLE_POLARIZATION" })}
             sampledLab={sampledLab}
             sampledRgb={sampledRgb}
             topMatch={selectedMatch || classicalMatches[0]}
@@ -384,23 +431,24 @@ export default function App() {
             bleachMatches={bleachMatches}
             zones={zones}
             substrate={substrate}
-            onChangeSubstrate={(up) => setSubstrate((prev) => ({ ...prev, ...up }))}
-            onSelectShade={setSelectedMatch}
+            onChangeSubstrate={(up) => dispatch({ type: "UPDATE_SUBSTRATE", payload: up })}
+            onSelectShade={(match) => dispatch({ type: "SELECT_SHADE", payload: match })}
             checklist={checklist}
-            onUpdateChecklist={(up) => setChecklist((prev) => ({ ...prev, ...up }))}
+            onUpdateChecklist={(up) => dispatch({ type: "UPDATE_CHECKLIST", payload: up })}
             onOpenChecklistModal={() => setIsChecklistOpen(true)}
             onOpenCameraGuide={() => setIsCameraGuideOpen(true)}
             onUploadClick={handleUploadClick}
             onOpenAiAnalysis={handleRunAiAnalysis}
             onOpenLabPrescription={() => setIsLabPrescriptionOpen(true)}
+            onStartNewCase={handleStartNewCase}
             isAiLoading={isAiLoading}
             activeZoneFilter={activeZoneFilter}
-            onSelectZoneFilter={setActiveZoneFilter}
+            onSelectZoneFilter={(z) => dispatch({ type: "SET_ZONE_FILTER", payload: z })}
             childrenCanvas={
               <ToothCanvasViewer
                 currentCase={currentCase}
                 crossPolarized={crossPolarized}
-                onTogglePolarized={() => setCrossPolarized(!crossPolarized)}
+                onTogglePolarized={() => dispatch({ type: "TOGGLE_POLARIZATION" })}
                 isCalibrated={isCalibrated}
                 calibrationMultipliers={calibrationMultipliers}
                 onCalibrateFromPoint={handleCalibrateFromPoint}
@@ -411,7 +459,7 @@ export default function App() {
                 cases={CLINICAL_CASES}
                 onSelectCase={handleSelectCase}
                 activeZoneFilter={activeZoneFilter}
-                onSelectZoneFilter={setActiveZoneFilter}
+                onSelectZoneFilter={(z) => dispatch({ type: "SET_ZONE_FILTER", payload: z })}
               />
             }
           />
@@ -422,7 +470,7 @@ export default function App() {
               <ToothCanvasViewer
                 currentCase={currentCase}
                 crossPolarized={crossPolarized}
-                onTogglePolarized={() => setCrossPolarized(!crossPolarized)}
+                onTogglePolarized={() => dispatch({ type: "TOGGLE_POLARIZATION" })}
                 isCalibrated={isCalibrated}
                 calibrationMultipliers={calibrationMultipliers}
                 onCalibrateFromPoint={handleCalibrateFromPoint}
@@ -433,14 +481,14 @@ export default function App() {
                 cases={CLINICAL_CASES}
                 onSelectCase={handleSelectCase}
                 activeZoneFilter={activeZoneFilter}
-                onSelectZoneFilter={setActiveZoneFilter}
+                onSelectZoneFilter={(z) => dispatch({ type: "SET_ZONE_FILTER", payload: z })}
               />
 
               {/* Show Zonal Shade Mapping only in Advanced Mode or as secondary guide */}
               {viewMode === "advanced" && (
                 <ZonalShadeMapping
                   zones={zones}
-                  onSelectZone={(z) => setActiveZoneFilter(z)}
+                  onSelectZone={(z) => dispatch({ type: "SET_ZONE_FILTER", payload: z })}
                   activeZone={activeZoneFilter}
                 />
               )}
@@ -458,15 +506,15 @@ export default function App() {
                   threeDMatch={threeDMatches[0]}
                   zones={zones}
                   substrate={substrate}
-                  onChangeSubstrate={(up) => setSubstrate((prev) => ({ ...prev, ...up }))}
-                  onSelectShade={setSelectedMatch}
+                  onChangeSubstrate={(up) => dispatch({ type: "UPDATE_SUBSTRATE", payload: up })}
+                  onSelectShade={(match) => dispatch({ type: "SELECT_SHADE", payload: match })}
                   onOpenAiAnalysis={handleRunAiAnalysis}
                   onOpenLabPrescription={() => setIsLabPrescriptionOpen(true)}
                   isAiLoading={isAiLoading}
                   activeZoneFilter={activeZoneFilter}
-                  onSelectZoneFilter={setActiveZoneFilter}
+                  onSelectZoneFilter={(z) => dispatch({ type: "SET_ZONE_FILTER", payload: z })}
                   crossPolarized={crossPolarized}
-                  onTogglePolarized={() => setCrossPolarized(!crossPolarized)}
+                  onTogglePolarized={() => dispatch({ type: "TOGGLE_POLARIZATION" })}
                 />
               ) : (
                 <>
@@ -478,14 +526,14 @@ export default function App() {
                     threeDMatches={threeDMatches}
                     bleachMatches={bleachMatches}
                     activeSystemTab={activeSystemTab}
-                    onSelectSystemTab={setActiveSystemTab}
-                    onSelectSpecificMatch={setSelectedMatch}
+                    onSelectSystemTab={(tab) => dispatch({ type: "SET_SYSTEM_TAB", payload: tab })}
+                    onSelectSpecificMatch={(match) => dispatch({ type: "SELECT_SHADE", payload: match })}
                     selectedMatch={selectedMatch}
                   />
 
                   <SubstratePreparationPanel
                     substrate={substrate}
-                    onChangeSubstrate={(up) => setSubstrate((prev) => ({ ...prev, ...up }))}
+                    onChangeSubstrate={(up) => dispatch({ type: "UPDATE_SUBSTRATE", payload: up })}
                     targetShadeCode={selectedMatch?.shade.code || classicalMatches[0].shade.code}
                   />
                 </>
@@ -500,7 +548,7 @@ export default function App() {
         isOpen={isChecklistOpen}
         onClose={() => setIsChecklistOpen(false)}
         checklist={checklist}
-        onUpdateChecklist={(up) => setChecklist((prev) => ({ ...prev, ...up }))}
+        onUpdateChecklist={(up) => dispatch({ type: "UPDATE_CHECKLIST", payload: up })}
       />
 
       <CameraSettingsDrawer

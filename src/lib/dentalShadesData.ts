@@ -2,6 +2,24 @@ import { DieShadeND, StandardShade, SubstrateConfig } from "../types/dental";
 import { translateLabToMunsell } from "./colorScience";
 
 /**
+ * Standardized Measurement Conditions & Scientific Source Documentation
+ * Reference: ISO/TR 28642:2016 (Guidance on colour measurement in dentistry)
+ * CIEDE2000 Formulation (kL=1.0, kC=1.0, kH=1.0)
+ */
+export const DATABASE_MEASUREMENT_STANDARDS = {
+  standard: "ISO/TR 28642:2016 Dental Spectrophotometry Standard",
+  illuminant: "CIE Standard Illuminant D65 (Correlated Color Temp: 6504 K, Ra ≥ 95)",
+  observer: "CIE 1931 2° Standard Colorimetric Observer",
+  measuringGeometry: "d/8° Integrating Sphere or 45°/0° Directional Geometry",
+  specularComponent: "Specular Component Excluded (SCE) via Linear Cross-Polarization",
+  calibrationReference: "White ceramic reflectance standard traceable to NIST / BAM standards",
+  perceptibilityThresholdDeltaE00: 0.8, // 50:50% perceptibility threshold (PT) in human clinical trials
+  acceptabilityThresholdDeltaE00: 1.8,  // 50:50% clinical acceptability threshold (AT) in aesthetic dentistry
+  formula: "CIEDE2000 (ΔE₀₀) with equal weighting coefficients kL=1, kC=1, kH=1",
+  disclaimer: "Match similarity percentages represent deterministic proximity indices relative to the 4.0 ΔE₀₀ threshold, not probabilistic Bayesian likelihoods.",
+};
+
+/**
  * Standard VITA Classical A1-D4 reference database
  * Based on ISO/TR 28642 and published dental spectrophotometry studies.
  */

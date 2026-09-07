@@ -47,3 +47,64 @@ a:focus-visible,
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ==========================================================================
+   Print Stylesheet for Dental Laboratory Work Orders & Prescriptions
+   ========================================================================== */
+@media print {
+  /* Hide non-essential web elements, banners, backdrops, and navigation */
+  nav, header, footer, .no-print, [role="dialog"] > div > div:first-child button {
+    display: none !important;
+  }
+
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* When printing a modal prescription, promote it to full page */
+  .fixed {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
+  #modal-lab-prescription {
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Optimize card contrasts for monochrome and grayscale laser printers */
+  .bg-neutral-100, .bg-neutral-50, .bg-teal-50, .bg-teal-100 {
+    background-color: #f7f7f7 !important;
+    border: 1px solid #cccccc !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th, td {
+    border: 1px solid #cccccc !important;
+  }
+
+  /* Prevent awkward page breaks across clinical recipe blocks */
+  .print-break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Hide print/copy action buttons */
+  .print-actions-hidden {
+    display: none !important;
+  }
+}
+

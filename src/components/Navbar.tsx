@@ -9,6 +9,7 @@ import {
   Stethoscope,
   Microscope,
   Compass,
+  RotateCcw,
 } from "lucide-react";
 import { ClinicalProtocolChecklist } from "../types/dental";
 
@@ -19,6 +20,7 @@ interface NavbarProps {
   onOpenAiAnalysis: () => void;
   onOpenCameraGuide: () => void;
   onUploadClick: () => void;
+  onStartNewCase?: () => void;
   isAiLoading: boolean;
   viewMode: "guided" | "chairside" | "advanced";
   onToggleViewMode: (mode: "guided" | "chairside" | "advanced") => void;
@@ -37,6 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAiAnalysis,
   onOpenCameraGuide,
   onUploadClick,
+  onStartNewCase,
   isAiLoading,
   viewMode,
   onToggleViewMode,
@@ -121,6 +124,17 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          {onStartNewCase && (
+            <button
+              id="btn-new-case"
+              onClick={onStartNewCase}
+              className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition text-xs font-medium border border-neutral-200"
+              title="Start New Clinical Case (Reset)"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">New Case</span>
+            </button>
+          )}
           <button
             id="btn-camera-guide"
             onClick={onOpenCameraGuide}

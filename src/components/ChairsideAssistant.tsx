@@ -25,6 +25,7 @@ import {
   SubstrateConfig, 
   ZoneData 
 } from "../types/dental";
+import { copyToClipboard } from "../lib/validationSchemas";
 
 interface ChairsideAssistantProps {
   currentCase: ClinicalCase;
@@ -70,11 +71,14 @@ export const ChairsideAssistant: React.FC<ChairsideAssistantProps> = ({
   onTogglePolarized,
 }) => {
   const [copiedNote, setCopiedNote] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   // Is substrate dark?
   const isDarkPrep = ["ND4", "ND5", "ND6", "ND7", "ND8", "ND9"].includes(substrate.prepShade);
+  const isInvalidMeasurement = !topMatch || topMatch.trafficLight === "invalid" || Number.isNaN(topMatch.deltaE00);
 
-  const handleCopyChairsideNote = () => {
+  const handleCopyChairsideNote = async () => {
+    setCopyError(null);
     const text = `
 DENTAL LAB SHADE ORDER
 Patient: ${currentCase.patientInitials} | Tooth: ${currentCase.toothNumber}
@@ -85,16 +89,28 @@ Prep Shade: ${substrate.prepShade} (${isDarkPrep ? "Dark prep - Needs Medium Opa
 - Gingival 1/3: ${zones.cervical.matchedClassical.shade.code} (Warm saturation)
 - Middle Body 1/3: ${zones.middle.matchedClassical.shade.code} (Base shade)
 - Incisal 1/3: ${zones.incisal.matchedClassical.shade.code} (Translucent Enamel / Opal)
-Match Confidence: ${topMatch.confidencePercent}% (ΔE00: ${topMatch.deltaE00.toFixed(2)})
+Similarity Score: ${topMatch.matchSimilarityScore ?? topMatch.confidencePercent}% (ΔE00: ${Number.isFinite(topMatch.deltaE00) ? topMatch.deltaE00.toFixed(2) : "N/A"})
     `.trim();
 
-    navigator.clipboard.writeText(text);
-    setCopiedNote(true);
-    setTimeout(() => setCopiedNote(false), 2500);
+    const result = await copyToClipboard(text);
+    if (result.success) {
+      setCopiedNote(true);
+      setCopyError(null);
+      setTimeout(() => setCopiedNote(false), 2500);
+    } else {
+      setCopyError(result.error || "Clipboard copy failed. Please select text manually.");
+    }
   };
 
   return (
     <div className="space-y-4">
+      {copyError && (
+        <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-1.5">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{copyError}</span>
+        </div>
+      )}
+
       {/* 1. Primary Recommended Shade Hero Card */}
       <div className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
         {/* Decorative subtle background gradient */}
@@ -107,10 +123,17 @@ Match Confidence: ${topMatch.confidencePercent}% (ΔE00: ${topMatch.deltaE00.toF
                 <Stethoscope className="w-3.5 h-3.5" />
                 Recommended Clinical Shade
               </span>
-              <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
-                {topMatch.confidencePercent}% Match Quality
-              </span>
+              {isInvalidMeasurement ? (
+                <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Invalid Measurement
+                </span>
+              ) : (
+                <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {topMatch.matchSimilarityScore ?? topMatch.confidencePercent}% Similarity Index
+                </span>
+              )}
             </div>
             <h2 className="text-3xl font-extrabold text-neutral-900 mt-1 tracking-tight">
               {topMatch.shade.name}
@@ -165,7 +188,7 @@ Match Confidence: ${topMatch.confidencePercent}% (ΔE00: ${topMatch.deltaE00.toF
                 >
                   <span>{match.shade.code}</span>
                   <span className={`text-[10px] ${isSelected ? "text-neutral-900" : "text-neutral-500"}`}>
-                    ({match.confidencePercent}%)
+                    ({match.matchSimilarityScore ?? match.confidencePercent}%)
                   </span>
                 </button>
               );
@@ -173,7 +196,13 @@ Match Confidence: ${topMatch.confidencePercent}% (ΔE00: ${topMatch.deltaE00.toF
           </div>
 
           <div className="text-[11px] text-neutral-500 font-mono">
-            ΔE₀₀ = <strong className="text-emerald-600">{topMatch.deltaE00.toFixed(2)}</strong> (Imperceptible Blend)
+            CIEDE2000 ΔE₀₀ ={" "}
+            {Number.isFinite(topMatch.deltaE00) ? (
+              <strong className="text-emerald-600 font-bold">{topMatch.deltaE00.toFixed(2)}</strong>
+            ) : (
+              <strong className="text-red-600 font-bold">N/A (Invalid)</strong>
+            )}{" "}
+            ({isInvalidMeasurement ? "Review Input Coordinates" : "Imperceptible Blend"})
           </div>
         </div>
       </div>

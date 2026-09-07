@@ -21,7 +21,9 @@ import {
   Upload,
   Info,
   Sliders,
-  CheckCheck
+  CheckCheck,
+  AlertCircle,
+  XCircle
 } from "lucide-react";
 import { 
   CIELABColor, 
@@ -32,6 +34,7 @@ import {
   SubstrateConfig, 
   ZoneData 
 } from "../types/dental";
+import { copyToClipboard } from "../lib/validationSchemas";
 
 interface GuidedFlowWizardProps {
   currentCase: ClinicalCase;
@@ -60,6 +63,7 @@ interface GuidedFlowWizardProps {
   onUploadClick: () => void;
   onOpenAiAnalysis: () => void;
   onOpenLabPrescription: () => void;
+  onStartNewCase?: () => void;
   isAiLoading: boolean;
   activeZoneFilter: "all" | "cervical" | "middle" | "incisal";
   onSelectZoneFilter: (zone: "all" | "cervical" | "middle" | "incisal") => void;
@@ -89,6 +93,7 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
   onUploadClick,
   onOpenAiAnalysis,
   onOpenLabPrescription,
+  onStartNewCase,
   isAiLoading,
   activeZoneFilter,
   onSelectZoneFilter,
@@ -96,6 +101,7 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [copiedNote, setCopiedNote] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const [copiedFullSlip, setCopiedFullSlip] = useState(false);
 
   const allChecklistPassed = 
@@ -111,14 +117,17 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
     ? (substrate.thicknessMm < 0.8 ? "IPS e.max HO (High Opacity)" : "IPS e.max MO 1 (Medium Opacity)")
     : (substrate.thicknessMm >= 1.2 ? "IPS e.max MT (Medium Translucency)" : "IPS e.max LT (Low Translucency)");
 
-  const handleCopyNote = () => {
+  const isInvalidMeasurement = !topMatch || topMatch.trafficLight === "invalid" || Number.isNaN(topMatch.deltaE00);
+
+  const handleCopyNote = async () => {
+    setCopyError(null);
     const text = `
 === DENTAL LAB SHADE PRESCRIPTION ===
 Patient: ${currentCase.patientInitials} | Tooth: ${currentCase.toothNumber}
 Indication: ${substrate.restorationType.replace("_", " ").toUpperCase()} (${substrate.material.replace("_", " ")}, ${substrate.thicknessMm}mm)
 Target Base Shade: ${topMatch.shade.name} (${topMatch.shade.code})
 3D-Master Alternative: ${threeDMatch.shade.code}
-Match Confidence: ${topMatch.confidencePercent}% (CIEDE2000 ΔE00: ${topMatch.deltaE00.toFixed(2)})
+Similarity Score: ${topMatch.matchSimilarityScore ?? topMatch.confidencePercent}% (CIEDE2000 ΔE00: ${Number.isFinite(topMatch.deltaE00) ? topMatch.deltaE00.toFixed(2) : "N/A"})
 Prep Stump Shade: ${substrate.prepShade} (${isDarkPrep ? "Dark Discolored Prep" : "Normal Vital Dentin"})
 Recommended Ingot: ${recommendedIngot}
 
@@ -130,9 +139,21 @@ Recommended Ingot: ${recommendedIngot}
 Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verified.
     `.trim();
 
-    navigator.clipboard.writeText(text);
-    setCopiedNote(true);
-    setTimeout(() => setCopiedNote(false), 2500);
+    const result = await copyToClipboard(text);
+    if (result.success) {
+      setCopiedNote(true);
+      setCopyError(null);
+      setTimeout(() => setCopiedNote(false), 2500);
+    } else {
+      setCopyError(result.error || "Clipboard copy failed. Please select text manually.");
+    }
+  };
+
+  const handleStartNewCase = () => {
+    setCurrentStep(1);
+    if (onStartNewCase) {
+      onStartNewCase();
+    }
   };
 
   const handleDownloadCaseReport = () => {
@@ -191,15 +212,15 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
   return (
     <div className="space-y-6">
       {/* 3-Step Guided Progress Header */}
-      <div className="bg-white border border-neutral-200 rounded-2xl p-4 shadow-sm">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* Stepper Tabs */}
-          <div className="flex items-center w-full sm:w-auto justify-between sm:justify-start gap-2 sm:gap-3">
+      <div className="bg-white border border-neutral-200 rounded-2xl p-3 sm:p-4 shadow-sm w-full min-w-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 w-full min-w-0">
+          {/* Stepper Tabs — compact and non-overflowing on mobile */}
+          <div className="flex items-center w-full sm:w-auto overflow-x-auto no-scrollbar justify-between sm:justify-start gap-1.5 sm:gap-3 py-0.5">
             {/* Step 1 */}
             <button
               id="step-tab-1"
               onClick={() => setCurrentStep(1)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition border ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition border shrink-0 ${
                 currentStep === 1
                   ? "bg-teal-600 text-white border-teal-600 shadow-sm"
                   : currentStep > 1
@@ -212,16 +233,17 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
               }`}>
                 {currentStep > 1 ? <Check className="w-3 h-3" /> : "1"}
               </div>
-              <span>Step 1: Capture &amp; Align</span>
+              <span className="hidden sm:inline">Step 1: Capture &amp; Align</span>
+              <span className="sm:hidden">1. Capture</span>
             </button>
 
-            <ChevronRight className="w-4 h-4 text-neutral-500 shrink-0 hidden sm:block" />
+            <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
 
             {/* Step 2 */}
             <button
               id="step-tab-2"
               onClick={() => setCurrentStep(2)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition border ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition border shrink-0 ${
                 currentStep === 2
                   ? "bg-teal-600 text-white border-teal-600 shadow-sm"
                   : currentStep > 2
@@ -234,16 +256,17 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
               }`}>
                 {currentStep > 2 ? <Check className="w-3 h-3" /> : "2"}
               </div>
-              <span>Step 2: Select Shade</span>
+              <span className="hidden sm:inline">Step 2: Select Shade</span>
+              <span className="sm:hidden">2. Shade</span>
             </button>
 
-            <ChevronRight className="w-4 h-4 text-neutral-500 shrink-0 hidden sm:block" />
+            <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
 
             {/* Step 3 */}
             <button
               id="step-tab-3"
               onClick={() => setCurrentStep(3)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition border ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition border shrink-0 ${
                 currentStep === 3
                   ? "bg-teal-600 text-white border-teal-600 shadow-sm"
                   : "bg-white text-neutral-500 border-neutral-200"
@@ -254,12 +277,13 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
               }`}>
                 3
               </div>
-              <span>Step 3: Export &amp; Order</span>
+              <span className="hidden sm:inline">Step 3: Export &amp; Order</span>
+              <span className="sm:hidden">3. Export</span>
             </button>
           </div>
 
           {/* Quick Flow Navigator */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
             {currentStep > 1 && (
               <button
                 onClick={() => setCurrentStep((prev) => (prev - 1) as any)}
@@ -304,9 +328,9 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
           </div>
 
           {/* Right: Step 1 Guided Panel (5 cols) */}
-          <div className="lg:col-span-5 space-y-4">
+          <div className="lg:col-span-5 space-y-4 min-w-0">
             {/* Step 1 Introduction Card */}
-            <div className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 w-full min-w-0">
               <div className="flex items-center gap-2 text-teal-600">
                 <Camera className="w-5 h-5" />
                 <h3 className="font-bold text-base text-neutral-900">Step 1: Patient Intraoral Photo</h3>
@@ -315,30 +339,32 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
                 Ensure proper cross-polarization to remove specular surface reflection, click anywhere on the tooth to sample, or use the quick-zone buttons.
               </p>
 
-              {/* Patient Case Selector */}
-              <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 space-y-2">
+              {/* Patient Case Selector — Mobile-safe flex with truncated select */}
+              <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 space-y-2 w-full min-w-0">
                 <label className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider block">
                   Select Clinical Case or Upload
                 </label>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={currentCase.id}
-                    onChange={(e) => {
-                      const found = cases.find((c) => c.id === e.target.value);
-                      if (found) onSelectCase(found);
-                    }}
-                    className="flex-1 bg-white border border-neutral-300 text-xs text-neutral-900 rounded-lg p-2 font-medium focus:ring-1 focus:ring-teal-600 focus:outline-none"
-                  >
-                    {cases.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.title} ({c.toothNumber})
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full min-w-0">
+                  <div className="relative min-w-0 flex-1 w-full">
+                    <select
+                      value={currentCase.id}
+                      onChange={(e) => {
+                        const found = cases.find((c) => c.id === e.target.value);
+                        if (found) onSelectCase(found);
+                      }}
+                      className="w-full min-w-0 max-w-full bg-white border border-neutral-300 text-xs text-neutral-900 rounded-lg p-2 font-medium focus:ring-1 focus:ring-teal-600 focus:outline-none truncate"
+                    >
+                      {cases.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.toothNumber} • {c.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
                   <button
                     onClick={onUploadClick}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold border border-neutral-300 transition shrink-0"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold border border-neutral-300 transition shrink-0 w-full sm:w-auto"
                     title="Upload patient intraoral photo"
                   >
                     <Upload className="w-3.5 h-3.5 text-teal-600" />
@@ -490,10 +516,17 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
                       <Stethoscope className="w-3.5 h-3.5" />
                       Primary Clinical Match
                     </span>
-                    <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      {topMatch.confidencePercent}% Confidence
-                    </span>
+                    {isInvalidMeasurement ? (
+                      <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Invalid Measurement
+                      </span>
+                    ) : (
+                      <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        {topMatch.matchSimilarityScore ?? topMatch.confidencePercent}% Similarity Index
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-3xl font-black text-neutral-900 mt-1 tracking-tight">
                     {topMatch.shade.name}
@@ -548,7 +581,7 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
                       >
                         <span>{match.shade.code}</span>
                         <span className={`text-[10px] ${isSelected ? "text-neutral-900" : "text-neutral-500"}`}>
-                          ({match.confidencePercent}%)
+                          ({match.matchSimilarityScore ?? match.confidencePercent}%)
                         </span>
                       </button>
                     );
@@ -556,7 +589,13 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
                 </div>
 
                 <div className="text-[11px] text-neutral-500 font-mono">
-                  CIEDE2000 ΔE₀₀ = <strong className="text-emerald-600 font-bold">{topMatch.deltaE00.toFixed(2)}</strong> (Optimal Blend)
+                  CIEDE2000 ΔE₀₀ ={" "}
+                  {Number.isFinite(topMatch.deltaE00) ? (
+                    <strong className="text-emerald-600 font-bold">{topMatch.deltaE00.toFixed(2)}</strong>
+                  ) : (
+                    <strong className="text-red-600 font-bold">N/A (Invalid)</strong>
+                  )}{" "}
+                  ({isInvalidMeasurement ? "Review Coordinates" : "Optimal Blend"})
                 </div>
               </div>
             </div>
@@ -660,14 +699,14 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
 
               {/* Quick Prep Selection Buttons */}
               <div className="grid grid-cols-3 gap-2">
-                {[
+                {([
                   { code: "ND1", label: "ND1 Bleach" },
                   { code: "ND2", label: "ND2 Vital" },
                   { code: "ND3", label: "ND3 Medium" },
                   { code: "ND4", label: "ND4 Dark" },
                   { code: "ND5", label: "ND5 Stained" },
                   { code: "ND7", label: "ND7 Devital" },
-                ].map((item) => (
+                ] as const).map((item) => (
                   <button
                     key={item.code}
                     onClick={() => onChangeSubstrate({ prepShade: item.code })}
@@ -877,6 +916,13 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
               </p>
 
               <div className="space-y-2.5 pt-1">
+                {copyError && (
+                  <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{copyError}</span>
+                  </div>
+                )}
+
                 {/* 1-Click Copy Slip */}
                 <button
                   id="btn-step3-copy-slip"
@@ -942,7 +988,7 @@ Lighting & Photography: Calibrated D65 5500K, Cross-Polarized photography verifi
               </button>
 
               <button
-                onClick={() => setCurrentStep(1)}
+                onClick={handleStartNewCase}
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold transition border border-neutral-300"
               >
                 <RotateCcw className="w-4 h-4" />

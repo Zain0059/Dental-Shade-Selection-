@@ -97,7 +97,7 @@ export const SubstratePreparationPanel: React.FC<SubstratePreparationPanelProps>
                 if (val === "implant_crown") defaultThickness = 1.5;
                 onChangeSubstrate({ restorationType: val, thicknessMm: defaultThickness });
               }}
-              className="w-full bg-neutral-100 border border-neutral-300 text-neutral-800 text-xs rounded-lg p-2.5 focus:outline-none focus:border-teal-600 font-medium"
+              className="w-full min-w-0 max-w-full truncate bg-neutral-100 border border-neutral-300 text-neutral-800 text-xs rounded-lg p-2.5 focus:outline-none focus:border-teal-600 font-medium"
             >
               <option value="porcelain_veneer">Porcelain Veneer (Minimal Prep 0.3–0.7mm)</option>
               <option value="anterior_crown">Anterior Full Crown (Aesthetic Zone 1.0–1.2mm)</option>
@@ -113,7 +113,7 @@ export const SubstratePreparationPanel: React.FC<SubstratePreparationPanelProps>
             <select
               value={substrate.material}
               onChange={(e) => onChangeSubstrate({ material: e.target.value as CeramicMaterial })}
-              className="w-full bg-neutral-100 border border-neutral-300 text-neutral-800 text-xs rounded-lg p-2.5 focus:outline-none focus:border-teal-600 font-medium"
+              className="w-full min-w-0 max-w-full truncate bg-neutral-100 border border-neutral-300 text-neutral-800 text-xs rounded-lg p-2.5 focus:outline-none focus:border-teal-600 font-medium"
             >
               <option value="lithium_disilicate">IPS e.max (Lithium Disilicate Press / CAD)</option>
               <option value="zirconia_multilayer_5y">Katana UTML (5Y-PSZ Ultra-Translucent Zirconia)</option>

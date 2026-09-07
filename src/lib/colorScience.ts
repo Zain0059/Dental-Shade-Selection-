@@ -1,9 +1,59 @@
-import { CIELABColor, MunsellColor, RGBColor, ShadeMatchResult, StandardShade } from "../types/dental";
+import { CIELABColor, MunsellColor, RGBColor, ShadeMatchResult, StandardShade, TrafficLightStatus } from "../types/dental";
 
-// Illuminant D65 reference white points (2° standard observer)
-const D65_Xn = 95.0489;
-const D65_Yn = 100.0;
-const D65_Zn = 108.884;
+// Illuminant D65 reference white points (2° standard observer, ISO/TR 28642)
+export const ILLUMINANT_D65 = {
+  Xn: 95.0489,
+  Yn: 100.0,
+  Zn: 108.884,
+  temperatureKelvin: 6504,
+  standardObserver: "2° Standard Observer (CIE 1931)",
+};
+
+const D65_Xn = ILLUMINANT_D65.Xn;
+const D65_Yn = ILLUMINANT_D65.Yn;
+const D65_Zn = ILLUMINANT_D65.Zn;
+
+/**
+ * Validates whether a given object is a clinically well-formed CIELAB coordinate.
+ */
+export function isValidCIELAB(lab: any): lab is CIELABColor {
+  if (!lab || typeof lab !== "object") return false;
+  return (
+    typeof lab.L === "number" &&
+    Number.isFinite(lab.L) &&
+    lab.L >= 0 &&
+    lab.L <= 100 &&
+    typeof lab.a === "number" &&
+    Number.isFinite(lab.a) &&
+    lab.a >= -150 &&
+    lab.a <= 150 &&
+    typeof lab.b === "number" &&
+    Number.isFinite(lab.b) &&
+    lab.b >= -150 &&
+    lab.b <= 150
+  );
+}
+
+/**
+ * Validates whether a given object is a valid sRGB color.
+ */
+export function isValidRGB(rgb: any): rgb is RGBColor {
+  if (!rgb || typeof rgb !== "object") return false;
+  return (
+    typeof rgb.r === "number" &&
+    Number.isFinite(rgb.r) &&
+    rgb.r >= 0 &&
+    rgb.r <= 255 &&
+    typeof rgb.g === "number" &&
+    Number.isFinite(rgb.g) &&
+    rgb.g >= 0 &&
+    rgb.g <= 255 &&
+    typeof rgb.b === "number" &&
+    Number.isFinite(rgb.b) &&
+    rgb.b >= 0 &&
+    rgb.b <= 255
+  );
+}
 
 /**
  * Converts sRGB [0..255] component to linear sRGB [0..1]
@@ -117,9 +167,16 @@ export function CIELABToSRGB(L: number, a: number, b: number): RGBColor {
 
 /**
  * Calculates CIEDE2000 (ΔE00) color difference.
- * Standard in dental color research (kL = kC = kH = 1).
+ * Standard in dental color research (kL = kC = kH = 1) per ISO/TR 28642.
+ * 
+ * IMPORTANT: Returns NaN for invalid, non-finite, or out-of-range coordinates.
+ * An invalid measurement MUST fail visibly rather than returning 0 (which would falsify a perfect match).
  */
 export function calculateDeltaE00(lab1: CIELABColor, lab2: CIELABColor): number {
+  if (!isValidCIELAB(lab1) || !isValidCIELAB(lab2)) {
+    return NaN;
+  }
+
   const kL = 1.0;
   const kC = 1.0;
   const kH = 1.0;
@@ -136,7 +193,8 @@ export function calculateDeltaE00(lab1: CIELABColor, lab2: CIELABColor): number 
   const C2 = Math.sqrt(a2 * a2 + b2 * b2);
   const C_bar = (C1 + C2) / 2;
 
-  const G = 0.5 * (1 - Math.sqrt(Math.pow(C_bar, 7) / (Math.pow(C_bar, 7) + Math.pow(25, 7))));
+  const C_bar_pow7 = Math.pow(C_bar, 7);
+  const G = 0.5 * (1 - Math.sqrt(C_bar_pow7 / (C_bar_pow7 + Math.pow(25, 7))));
 
   const a1_prime = (1 + G) * a1;
   const a2_prime = (1 + G) * a2;
@@ -189,7 +247,8 @@ export function calculateDeltaE00(lab1: CIELABColor, lab2: CIELABColor): number 
     0.2 * Math.cos(((4 * h_bar_prime - 63) * Math.PI) / 180);
 
   const deltaTheta = 30 * Math.exp(-Math.pow((h_bar_prime - 275) / 25, 2));
-  const RC = 2 * Math.sqrt(Math.pow(C_bar_prime, 7) / (Math.pow(C_bar_prime, 7) + Math.pow(25, 7)));
+  const C_bar_prime_pow7 = Math.pow(C_bar_prime, 7);
+  const RC = 2 * Math.sqrt(C_bar_prime_pow7 / (C_bar_prime_pow7 + Math.pow(25, 7)));
 
   const SL = 1 + (0.015 * Math.pow(L_bar_prime - 50, 2)) / Math.sqrt(20 + Math.pow(L_bar_prime - 50, 2));
   const SC = 1 + 0.045 * C_bar_prime;
@@ -200,18 +259,28 @@ export function calculateDeltaE00(lab1: CIELABColor, lab2: CIELABColor): number 
   const termC = deltaC_prime / (kC * SC);
   const termH = deltaH_prime / (kH * SH);
 
-  const deltaE00 = Math.sqrt(termL * termL + termC * termC + termH * termH + RT * termC * termH);
-  return Number.isFinite(deltaE00) ? deltaE00 : 0;
+  const underRadical = termL * termL + termC * termC + termH * termH + RT * termC * termH;
+  if (!Number.isFinite(underRadical) || underRadical < 0) {
+    return NaN;
+  }
+
+  const deltaE00 = Math.sqrt(underRadical);
+  return Number.isFinite(deltaE00) ? deltaE00 : NaN;
 }
 
 /**
- * Calculates Euclidean ΔE*ab (CIE 1976)
+ * Calculates Euclidean ΔE*ab (CIE 1976).
+ * Returns NaN for invalid coordinates.
  */
 export function calculateDeltaEab(lab1: CIELABColor, lab2: CIELABColor): number {
+  if (!isValidCIELAB(lab1) || !isValidCIELAB(lab2)) {
+    return NaN;
+  }
   const dL = lab1.L - lab2.L;
   const da = lab1.a - lab2.a;
   const db = lab1.b - lab2.b;
-  return Math.sqrt(dL * dL + da * da + db * db);
+  const distSq = dL * dL + da * da + db * db;
+  return Number.isFinite(distSq) && distSq >= 0 ? Math.sqrt(distSq) : NaN;
 }
 
 /**
@@ -219,11 +288,20 @@ export function calculateDeltaEab(lab1: CIELABColor, lab2: CIELABColor): number 
  * In dentistry, Value (lightness) is the critical primary determinant of clinical success.
  */
 export function translateLabToMunsell(lab: CIELABColor): MunsellColor {
+  if (!isValidCIELAB(lab)) {
+    return {
+      hue: "N/A",
+      value: NaN,
+      chroma: NaN,
+      notation: "Invalid Measurement",
+      valueSignificance: "CRITICAL_PRIMARY",
+    };
+  }
+
   // Munsell Value (0 to 10 scale derived from L*)
-  // Precise approximation: V = 10 * sqrt(L* / 100) or cubic polynomial
-  const value = Math.max(0, Math.min(10, (lab.L / 10)));
+  const value = Math.max(0, Math.min(10, lab.L / 10));
   
-  // Chroma in Munsell roughly correlates with C*ab / 5.5 in dental yellow-red range
+  // Chroma in Munsell roughly correlates with C*ab / 4.8 in dental yellow-red range
   const cStar = Math.sqrt(lab.a * lab.a + lab.b * lab.b);
   const chroma = Math.max(0, Math.min(14, cStar / 4.8));
 
@@ -256,43 +334,86 @@ export function translateLabToMunsell(lab: CIELABColor): MunsellColor {
 }
 
 /**
- * Returns traffic light color category based on CIEDE2000
- * Green: <= 1.6 (Imperceptible / Excellent match)
- * Yellow: 1.6 - 3.2 (Clinically acceptable)
- * Red: > 3.2 (Unacceptable deviation / adjust recipe)
+ * Returns traffic light color category based on CIEDE2000 thresholds (Paravina et al., Joiner et al.)
+ * Green: <= 1.6 (Imperceptible / Excellent match, well below 1.8 clinical acceptability limit)
+ * Yellow: 1.6 - 3.2 (Clinically acceptable shade match range)
+ * Red: > 3.2 (Clinically unacceptable color deviation requiring formulation correction)
+ * Invalid: NaN or non-finite calculation input
  */
-export function getTrafficLightStatus(deltaE00: number): "green" | "yellow" | "red" {
+export function getTrafficLightStatus(deltaE00: number): TrafficLightStatus {
+  if (!Number.isFinite(deltaE00) || deltaE00 < 0) return "invalid";
   if (deltaE00 <= 1.6) return "green";
   if (deltaE00 <= 3.2) return "yellow";
   return "red";
 }
 
 /**
- * Finds top matching dental shades from a given shade database
+ * Computes a standardized Color Proximity Index (0..100).
+ * 
+ * NOTE ON NOMENCLATURE: This index is a deterministic distance-scaling metric relative 
+ * to the clinical threshold of ΔE00 = 4.0. It is NOT a Bayesian probability or clinical 
+ * guarantee, and is documented as a Proximity / Similarity Score.
+ */
+export function calculateMatchSimilarityScore(deltaE00: number): number {
+  if (!Number.isFinite(deltaE00) || deltaE00 < 0) return 0;
+  // Scaled linearly where ΔE00 = 0 -> 100%, ΔE00 = 1.6 -> 80%, ΔE00 = 3.2 -> 60%, ΔE00 >= 8.0 -> 0%
+  return Math.max(0, Math.min(100, Math.round(100 - (deltaE00 / 4.0) * 50)));
+}
+
+/**
+ * Finds top matching dental shades from a given shade database.
+ * If sampledLab is invalid, marks result as unmeasurable and trafficLight="invalid".
  */
 export function findClosestShades(
   sampledLab: CIELABColor,
   database: StandardShade[],
   limit = 5
 ): ShadeMatchResult[] {
-  const scored = database.map((shade) => {
+  const isSampleValid = isValidCIELAB(sampledLab);
+
+  const scored: ShadeMatchResult[] = database.map((shade) => {
+    if (!isSampleValid) {
+      return {
+        shade,
+        deltaE00: NaN,
+        deltaEab: NaN,
+        trafficLight: "invalid" as const,
+        matchRank: 0,
+        matchSimilarityScore: 0,
+        confidencePercent: 0,
+        isMeasurable: false,
+      };
+    }
+
     const deltaE00 = calculateDeltaE00(sampledLab, shade.lab);
     const deltaEab = calculateDeltaEab(sampledLab, shade.lab);
     const trafficLight = getTrafficLightStatus(deltaE00);
-    // Confidence formula based on dental perception threshold
-    const confidencePercent = Math.max(0, Math.min(100, Math.round(100 - (deltaE00 / 4.0) * 50)));
+    const matchSimilarityScore = calculateMatchSimilarityScore(deltaE00);
 
     return {
       shade,
-      deltaE00: Number(deltaE00.toFixed(2)),
-      deltaEab: Number(deltaEab.toFixed(2)),
+      deltaE00: Number.isFinite(deltaE00) ? Number(deltaE00.toFixed(2)) : NaN,
+      deltaEab: Number.isFinite(deltaEab) ? Number(deltaEab.toFixed(2)) : NaN,
       trafficLight,
       matchRank: 0,
-      confidencePercent,
+      matchSimilarityScore,
+      confidencePercent: matchSimilarityScore,
+      isMeasurable: Number.isFinite(deltaE00),
     };
   });
 
-  scored.sort((a, b) => a.deltaE00 - b.deltaE00);
+  if (!isSampleValid) {
+    return scored.slice(0, limit).map((res, index) => ({
+      ...res,
+      matchRank: index + 1,
+    }));
+  }
+
+  scored.sort((a, b) => {
+    if (Number.isNaN(a.deltaE00)) return 1;
+    if (Number.isNaN(b.deltaE00)) return -1;
+    return a.deltaE00 - b.deltaE00;
+  });
 
   return scored.slice(0, limit).map((res, index) => ({
     ...res,

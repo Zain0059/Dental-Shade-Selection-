@@ -35,13 +35,17 @@ export interface StandardShade {
   recommendedIngot?: string;
 }
 
+export type TrafficLightStatus = "green" | "yellow" | "red" | "invalid";
+
 export interface ShadeMatchResult {
   shade: StandardShade;
-  deltaE00: number; // CIEDE2000
-  deltaEab: number; // Classical Euclidean CIE76
-  trafficLight: "green" | "yellow" | "red"; // Green <= 1.6, Yellow <= 3.2, Red > 3.2
+  deltaE00: number; // CIEDE2000, or NaN if measurement is invalid
+  deltaEab: number; // Classical Euclidean CIE76, or NaN if invalid
+  trafficLight: TrafficLightStatus; // Green <= 1.6, Yellow <= 3.2, Red > 3.2, Invalid = non-finite
   matchRank: number;
-  confidencePercent: number;
+  matchSimilarityScore: number; // 0..100 proximity index relative to ΔE00 threshold (NOT a statistical probability)
+  confidencePercent: number; // Backward-compatible alias for matchSimilarityScore
+  isMeasurable: boolean;
 }
 
 export type ToothZone = "cervical" | "middle" | "incisal";

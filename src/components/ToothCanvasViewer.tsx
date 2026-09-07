@@ -52,6 +52,7 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
   onSelectZoneFilter,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cleanCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   
   const [showZones, setShowZones] = useState(true);
@@ -64,6 +65,15 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
   const canvasWidth = 500;
   const canvasHeight = 440;
 
+  const getCleanCanvas = () => {
+    if (!cleanCanvasRef.current) {
+      cleanCanvasRef.current = document.createElement("canvas");
+      cleanCanvasRef.current.width = canvasWidth;
+      cleanCanvasRef.current.height = canvasHeight;
+    }
+    return cleanCanvasRef.current;
+  };
+
   // Render canvas whenever state changes
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -71,16 +81,25 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const cleanCanvas = getCleanCanvas();
+    const cleanCtx = cleanCanvas.getContext("2d");
+    if (!cleanCtx) return;
+
     if (customImage) {
       // Draw user uploaded image
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = customImage;
       img.onload = () => {
-        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-        ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+        // 1. Offscreen clean canvas receives raw un-overlayed image
+        cleanCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+        cleanCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
 
-        // If heatmap overlay is active, apply semi-transparent optical gradient
+        // 2. Visible canvas receives clean image first
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        ctx.drawImage(cleanCanvas, 0, 0, canvasWidth, canvasHeight);
+
+        // 3. Draw overlays only on visible canvas
         if (showHeatmap) {
           const grad = ctx.createLinearGradient(canvasWidth * 0.5, 50, canvasWidth * 0.5, canvasHeight - 50);
           grad.addColorStop(0, "rgba(239, 68, 68, 0.35)");
@@ -111,17 +130,63 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
         }
       };
     } else {
-      // Procedural synthetic dental case
+      // 1. Draw pure tooth without overlays to clean canvas for isolated sampling
       drawToothOnCanvas(
-        ctx,
+        cleanCtx,
         canvasWidth,
         canvasHeight,
         currentCase.id,
         crossPolarized,
         calibrationMultipliers,
-        showZones,
-        showHeatmap
+        false,
+        false
       );
+
+      // 2. Mirror clean image to visible canvas
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      ctx.drawImage(cleanCanvas, 0, 0, canvasWidth, canvasHeight);
+
+      // 3. Draw visible overlays on display context
+      if (showHeatmap) {
+        const grad = ctx.createLinearGradient(canvasWidth * 0.5, 50, canvasWidth * 0.5, canvasHeight - 50);
+        grad.addColorStop(0, "rgba(239, 68, 68, 0.35)");
+        grad.addColorStop(0.3, "rgba(245, 158, 11, 0.35)");
+        grad.addColorStop(0.65, "rgba(34, 197, 94, 0.35)");
+        grad.addColorStop(0.9, "rgba(59, 130, 246, 0.35)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      }
+
+      if (showZones) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(59, 130, 246, 0.85)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        const toothY = 55;
+        const toothH = canvasHeight * 0.72;
+        const toothX = canvasWidth * 0.5;
+        const toothW = canvasWidth * 0.44;
+
+        const y1 = toothY + toothH * 0.33;
+        ctx.beginPath();
+        ctx.moveTo(toothX - toothW * 0.55, y1);
+        ctx.lineTo(toothX + toothW * 0.55, y1);
+        ctx.stroke();
+
+        const y2 = toothY + toothH * 0.66;
+        ctx.beginPath();
+        ctx.moveTo(toothX - toothW * 0.55, y2);
+        ctx.lineTo(toothX + toothW * 0.55, y2);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.font = "bold 11px system-ui, sans-serif";
+        ctx.fillStyle = "#60a5fa";
+        ctx.fillText("CERVICAL (Warmer Chroma)", toothX + toothW * 0.58, toothY + toothH * 0.18);
+        ctx.fillText("BODY / MIDDLE (Base Shade)", toothX + toothW * 0.58, toothY + toothH * 0.5);
+        ctx.fillText("INCISAL (Translucency/Opal)", toothX + toothW * 0.58, toothY + toothH * 0.82);
+        ctx.restore();
+      }
     }
   }, [
     customImage,
@@ -147,8 +212,9 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
     const x = Math.round((e.clientX - rect.left) * scaleX);
     const y = Math.round((e.clientY - rect.top) * scaleY);
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    // Sample from clean canvas to prevent overlay contamination (heatmaps, zone dividers)
+    const samplingCtx = cleanCanvasRef.current?.getContext("2d") || canvas.getContext("2d");
+    if (!samplingCtx) return;
 
     // Sample pixel or average area ROI
     const radius = sampleRadius;
@@ -156,7 +222,7 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
     const startY = Math.max(0, y - Math.floor(radius / 2));
     const size = Math.max(1, radius);
 
-    const imgData = ctx.getImageData(startX, startY, size, size);
+    const imgData = samplingCtx.getImageData(startX, startY, size, size);
     let totalR = 0;
     let totalG = 0;
     let totalB = 0;
@@ -183,7 +249,7 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
     }
   };
 
-  // Hover tracker for instant live readout
+  // Hover tracker for instant live readout (from clean context)
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -194,10 +260,10 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
     const x = Math.round((e.clientX - rect.left) * scaleX);
     const y = Math.round((e.clientY - rect.top) * scaleY);
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const samplingCtx = cleanCanvasRef.current?.getContext("2d") || canvas.getContext("2d");
+    if (!samplingCtx) return;
 
-    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    const pixel = samplingCtx.getImageData(x, y, 1, 1).data;
     const r = pixel[0];
     const g = pixel[1];
     const b = pixel[2];
@@ -210,9 +276,9 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
 
   const handleQuickAutoCalibrate = () => {
     // Standard target for 18% gray card located at (45, 410)
-    const ctx = canvasRef.current?.getContext("2d");
-    if (ctx) {
-      const data = ctx.getImageData(45, canvasHeight - 45, 10, 10).data;
+    const samplingCtx = cleanCanvasRef.current?.getContext("2d") || canvasRef.current?.getContext("2d");
+    if (samplingCtx) {
+      const data = samplingCtx.getImageData(45, canvasHeight - 45, 10, 10).data;
       let r = 0, g = 0, b = 0;
       for (let i = 0; i < data.length; i += 4) {
         r += data[i];
@@ -232,10 +298,10 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
 
   return (
     <div id="tooth-viewer-container" className="bg-white border border-neutral-200 rounded-2xl p-4 lg:p-5 flex flex-col gap-4">
-      {/* Top Controls Bar — kept to two things: which case, and the one setting that changes the science (glare filter) */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-neutral-200">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider hidden sm:inline">Case:</span>
+      {/* Top Controls Bar — responsive layout with truncated, max-w bounded dropdown */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-neutral-200 w-full min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1 w-full sm:w-auto">
+          <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider shrink-0 hidden sm:inline">Case:</span>
           <select
             id="select-dental-case"
             value={currentCase.id}
@@ -243,11 +309,11 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
               const selected = cases.find((c) => c.id === e.target.value);
               if (selected) onSelectCase(selected);
             }}
-            className="bg-neutral-100 border border-neutral-300 text-neutral-800 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-teal-600 font-medium"
+            className="w-full sm:w-auto sm:max-w-xs min-w-0 max-w-full bg-neutral-100 border border-neutral-300 text-neutral-800 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-600 font-medium truncate"
           >
             {cases.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.toothNumber} &bull; {c.title}
+                {c.toothNumber} • {c.title}
               </option>
             ))}
           </select>
@@ -256,7 +322,7 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
         <button
           id="btn-toggle-polarization"
           onClick={onTogglePolarized}
-          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition ${
+          className={`flex items-center justify-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition shrink-0 w-full sm:w-auto ${
             crossPolarized
               ? "bg-teal-600/15 border border-teal-600 text-teal-700 font-bold"
               : "bg-neutral-100 border border-neutral-300 text-neutral-500 hover:text-neutral-800"
@@ -269,13 +335,13 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
       </div>
 
       {/* Quick Action Hint for Dentist */}
-      <div className="flex items-center justify-between bg-neutral-50 px-3 py-2 rounded-xl border border-neutral-200 text-xs">
-        <div className="flex items-center gap-2 text-neutral-600">
-          <Pipette className="w-4 h-4 text-teal-600" />
-          <span>Click anywhere on the tooth or select a zone:</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-neutral-50 px-3 py-2 rounded-xl border border-neutral-200 text-xs gap-2 w-full min-w-0">
+        <div className="flex items-center gap-2 text-neutral-600 min-w-0">
+          <Pipette className="w-4 h-4 text-teal-600 shrink-0" />
+          <span className="truncate">Sample point or select zone:</span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap shrink-0">
           <button
             onClick={() => {
               onSelectZoneFilter("cervical");
@@ -289,7 +355,7 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
                 onSelectSamplePoint({ x: sampleX, y: sampleY }, rgb, sRGBToCIELAB(rgb.r, rgb.g, rgb.b));
               }
             }}
-            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+            className={`px-2 py-1 rounded text-[11px] font-semibold transition ${
               activeZoneFilter === "cervical"
                 ? "bg-amber-500 text-white font-bold shadow-sm"
                 : "bg-neutral-100 text-amber-700 hover:bg-neutral-200 border border-amber-500/30"
@@ -311,7 +377,7 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
                 onSelectSamplePoint({ x: sampleX, y: sampleY }, rgb, sRGBToCIELAB(rgb.r, rgb.g, rgb.b));
               }
             }}
-            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+            className={`px-2 py-1 rounded text-[11px] font-semibold transition ${
               activeZoneFilter === "middle"
                 ? "bg-teal-600 text-white font-bold shadow-sm"
                 : "bg-neutral-100 text-teal-700 hover:bg-neutral-200 border border-teal-600/30"
@@ -333,7 +399,7 @@ export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
                 onSelectSamplePoint({ x: sampleX, y: sampleY }, rgb, sRGBToCIELAB(rgb.r, rgb.g, rgb.b));
               }
             }}
-            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+            className={`px-2 py-1 rounded text-[11px] font-semibold transition ${
               activeZoneFilter === "incisal"
                 ? "bg-teal-600 text-white font-bold shadow-sm"
                 : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-200"
