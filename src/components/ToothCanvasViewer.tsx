@@ -14,43 +14,42 @@ import {
   Zap,
   Info
 } from "lucide-react";
-import { CIELABColor, ClinicalCase, RGBColor } from "../types/dental";
-import { drawToothOnCanvas } from "../lib/sampleCases";
+import { CIELABColor, RGBColor } from "../types/dental";
+import { CLINICAL_CASES, drawToothOnCanvas } from "../lib/sampleCases";
 import { sRGBToCIELAB, calculateDeltaE00 } from "../lib/colorScience";
+import { useCaseContext } from "../context/CaseContext";
 
-interface ToothCanvasViewerProps {
-  currentCase: ClinicalCase;
-  crossPolarized: boolean;
-  onTogglePolarized: () => void;
-  isCalibrated: boolean;
-  calibrationMultipliers: { r: number; g: number; b: number };
-  onCalibrateFromPoint: (sampledRgb: RGBColor) => void;
-  onResetCalibration: () => void;
-  sampledPoint: { x: number; y: number } | null;
-  onSelectSamplePoint: (point: { x: number; y: number }, rgb: RGBColor, lab: CIELABColor) => void;
-  customImage: string | null;
-  cases: ClinicalCase[];
-  onSelectCase: (c: ClinicalCase) => void;
-  activeZoneFilter: "all" | "cervical" | "middle" | "incisal";
-  onSelectZoneFilter: (z: "all" | "cervical" | "middle" | "incisal") => void;
-}
+export const ToothCanvasViewer: React.FC = () => {
+  const { state, dispatch } = useCaseContext();
+  const {
+    currentCase,
+    crossPolarized,
+    isCalibrated,
+    calibrationMultipliers,
+    sampledPoint,
+    customImage,
+    activeZoneFilter
+  } = state;
 
-export const ToothCanvasViewer: React.FC<ToothCanvasViewerProps> = ({
-  currentCase,
-  crossPolarized,
-  onTogglePolarized,
-  isCalibrated,
-  calibrationMultipliers,
-  onCalibrateFromPoint,
-  onResetCalibration,
-  sampledPoint,
-  onSelectSamplePoint,
-  customImage,
-  cases,
-  onSelectCase,
-  activeZoneFilter,
-  onSelectZoneFilter,
-}) => {
+  const onTogglePolarized = () => dispatch({ type: "TOGGLE_POLARIZATION" });
+  
+  const onCalibrateFromPoint = (sampledGrayRgb: RGBColor) => {
+    const target = 119;
+    const rMult = sampledGrayRgb.r > 0 ? target / sampledGrayRgb.r : 1.0;
+    const gMult = sampledGrayRgb.g > 0 ? target / sampledGrayRgb.g : 1.0;
+    const bMult = sampledGrayRgb.b > 0 ? target / sampledGrayRgb.b : 1.0;
+    dispatch({ type: "APPLY_CALIBRATION", payload: { multipliers: { r: rMult, g: gMult, b: bMult } } });
+  };
+  
+  const onResetCalibration = () => dispatch({ type: "RESET_CALIBRATION" });
+  
+  const onSelectSamplePoint = (point: { x: number; y: number }, rawRgb: RGBColor, _lab?: CIELABColor) => {
+    dispatch({ type: "SAMPLE_POINT", payload: { point, rawRgb } });
+  };
+  
+  const cases = CLINICAL_CASES;
+  const onSelectCase = (c: any) => dispatch({ type: "LOAD_CASE", payload: { caseItem: c } });
+  const onSelectZoneFilter = (z: "all" | "cervical" | "middle" | "incisal") => dispatch({ type: "SET_ZONE_FILTER", payload: z });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const cleanCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);

@@ -22,15 +22,9 @@ interface NavbarProps {
   onUploadClick: () => void;
   onStartNewCase?: () => void;
   isAiLoading: boolean;
-  viewMode: "guided" | "chairside" | "advanced";
-  onToggleViewMode: (mode: "guided" | "chairside" | "advanced") => void;
+  showAdvancedPanels: boolean;
+  onToggleAdvancedPanels: () => void;
 }
-
-const MODES: { key: "guided" | "chairside" | "advanced"; label: string; shortLabel: string; icon: React.ElementType }[] = [
-  { key: "guided", label: "Guided Flow", shortLabel: "Guided", icon: Compass },
-  { key: "chairside", label: "Chairside Quick View", shortLabel: "Chairside", icon: Stethoscope },
-  { key: "advanced", label: "Lab & Colorimetry", shortLabel: "Lab", icon: Microscope },
-];
 
 export const Navbar: React.FC<NavbarProps> = ({
   checklist,
@@ -41,8 +35,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onUploadClick,
   onStartNewCase,
   isAiLoading,
-  viewMode,
-  onToggleViewMode,
+  showAdvancedPanels,
+  onToggleAdvancedPanels,
 }) => {
   const allChecklistPassed =
     checklist.hydrationChecked &&
@@ -103,24 +97,27 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Row 2 — workflow switcher (left) + secondary utility icons (right). Scrolls, never wraps. */}
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 px-4 lg:px-6 pb-2.5 -mt-0.5">
         <div className="flex items-center bg-neutral-100 p-0.5 rounded-lg gap-0.5 overflow-x-auto">
-          {MODES.map((mode) => {
-            const Icon = mode.icon;
-            const active = viewMode === mode.key;
-            return (
-              <button
-                key={mode.key}
-                id={`btn-mode-${mode.key}`}
-                onClick={() => onToggleViewMode(mode.key)}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 h-8 rounded-md text-xs font-medium whitespace-nowrap transition ${
-                  active ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-800"
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">{mode.label}</span>
-                <span className="md:hidden">{mode.shortLabel}</span>
-              </button>
-            );
-          })}
+          <button
+            onClick={() => onToggleAdvancedPanels()}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 h-8 rounded-md text-xs font-medium whitespace-nowrap transition ${
+              !showAdvancedPanels ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-800"
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Guided Flow</span>
+            <span className="md:hidden">Guided</span>
+          </button>
+
+          <button
+            onClick={() => onToggleAdvancedPanels()}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 h-8 rounded-md text-xs font-medium whitespace-nowrap transition ${
+              showAdvancedPanels ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-800"
+            }`}
+          >
+            <Microscope className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Advanced Panels</span>
+            <span className="md:hidden">Advanced</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">

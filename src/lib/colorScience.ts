@@ -1,4 +1,4 @@
-import { CIELABColor, MunsellColor, RGBColor, ShadeMatchResult, StandardShade, TrafficLightStatus } from "../types/dental";
+import { CIELABColor, MunsellColor, RGBColor, ShadeMatchResult, StandardShade, TrafficLightStatus, ZoneData } from "../types/dental";
 
 // Illuminant D65 reference white points (2° standard observer, ISO/TR 28642)
 export const ILLUMINANT_D65 = {
@@ -435,3 +435,20 @@ export function applyCalibration(
 
   return { r: rCal, g: gCal, b: bCal, hex };
 }
+
+export const ZONE_OFFSETS = {
+  cervical: {
+    dL: -3.5,
+    da: 0.8,
+    db: 3.2,
+    opticalCharacteristics: ["High Chroma Saturation", "Warm Terracotta/Ochre", "Dentin Emergence Profile"],
+    description: "Warmer saturation (+b*), thinner enamel, strong dentin presence.",
+  },
+  incisal: {
+    dL: 2.0,
+    da: -0.9,
+    db: -4.5,
+    opticalCharacteristics: ["3-Lobe Mamelon Architecture", "Opal Effect (OE1/OE2)", "Amber Halo Rim"],
+    description: "High translucency, opalescent light scattering (blue reflection / amber transmission), mamelon lobes.",
+  },
+};

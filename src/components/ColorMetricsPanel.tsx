@@ -12,34 +12,15 @@ import {
   Info,
   X
 } from "lucide-react";
-import { CIELABColor, MunsellColor, RGBColor, ShadeMatchResult } from "../types/dental";
 import { DATABASE_MEASUREMENT_STANDARDS } from "../lib/dentalShadesData";
+import { useCaseContext } from "../context/CaseContext";
 
-interface ColorMetricsPanelProps {
-  sampledLab: CIELABColor;
-  sampledRgb: RGBColor;
-  munsell: MunsellColor;
-  classicalMatches: ShadeMatchResult[];
-  threeDMatches: ShadeMatchResult[];
-  bleachMatches: ShadeMatchResult[];
-  activeSystemTab: "classical" | "3d_master" | "bleach";
-  onSelectSystemTab: (tab: "classical" | "3d_master" | "bleach") => void;
-  onSelectSpecificMatch: (match: ShadeMatchResult) => void;
-  selectedMatch: ShadeMatchResult | null;
-}
-
-export const ColorMetricsPanel: React.FC<ColorMetricsPanelProps> = ({
-  sampledLab,
-  sampledRgb,
-  munsell,
-  classicalMatches,
-  threeDMatches,
-  bleachMatches,
-  activeSystemTab,
-  onSelectSystemTab,
-  onSelectSpecificMatch,
-  selectedMatch,
-}) => {
+export const ColorMetricsPanel: React.FC = () => {
+  const { state, dispatch, classicalMatches, threeDMatches, bleachMatches } = useCaseContext();
+  const { sampledLab, sampledRgb, munsell, activeSystemTab, selectedMatch } = state;
+  
+  const onSelectSystemTab = (tab: "classical" | "3d_master" | "bleach") => dispatch({ type: "SET_SYSTEM_TAB", payload: tab });
+  const onSelectSpecificMatch = (match: any) => dispatch({ type: "SELECT_SHADE", payload: match });
   const [showStandardsModal, setShowStandardsModal] = useState(false);
 
   const topMatch = 

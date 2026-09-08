@@ -1,22 +1,11 @@
 import React from "react";
 import { Layers, Sparkles, Sun, Eye, Droplet, ArrowUpRight } from "lucide-react";
-import { ZoneData } from "../types/dental";
+import { useCaseContext } from "../context/CaseContext";
 
-interface ZonalShadeMappingProps {
-  zones: {
-    cervical: ZoneData;
-    middle: ZoneData;
-    incisal: ZoneData;
-  };
-  onSelectZone: (zone: "cervical" | "middle" | "incisal") => void;
-  activeZone: "cervical" | "middle" | "incisal" | "all";
-}
-
-export const ZonalShadeMapping: React.FC<ZonalShadeMappingProps> = ({
-  zones,
-  onSelectZone,
-  activeZone,
-}) => {
+export const ZonalShadeMapping: React.FC = () => {
+  const { state, dispatch, zones } = useCaseContext();
+  const { activeZoneFilter: activeZone } = state;
+  const onSelectZone = (zone: "cervical" | "middle" | "incisal") => dispatch({ type: "SET_ZONE_FILTER", payload: zone });
   const zoneList = [
     { key: "cervical" as const, data: zones.cervical, tag: "Warm Chroma", icon: Sun, color: "border-amber-500/40 text-amber-700" },
     { key: "middle" as const, data: zones.middle, tag: "True Base Shade", icon: Layers, color: "border-teal-600/40 text-teal-700" },

@@ -188,38 +188,33 @@ Please return a detailed JSON object with:
   }
   parts.push({ text: prompt });
 
-  // Try modern supported models in sequence, then fallback to deterministic if external API is temporarily busy
-  const candidateModels = ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.7-flash", "gemini-flash-latest"];
-  
-  for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: { parts },
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          temperature: 0.3,
-        },
-      });
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-pro",
+      contents: { parts },
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        temperature: 0.3,
+      },
+    });
 
-      if (response.text) {
-        const parsed = JSON.parse(response.text);
-        return res.json({
-          success: true,
-          isAiGenerated: true,
-          modelUsed: model,
-          ...parsed,
-        });
-      }
-    } catch (err: any) {
-      console.warn(`Model ${model} unavailable (${err?.message || err}), trying backup...`);
+    if (response.text) {
+      const parsed = JSON.parse(response.text);
+      return res.json({
+        success: true,
+        isAiGenerated: true,
+        modelUsed: "gemini-2.5-pro",
+        ...parsed,
+      });
     }
+  } catch (err: any) {
+    console.warn(`Model gemini-2.5-pro unavailable (${err?.message || err}), serving high-precision deterministic formulation.`);
+    return res.json(buildDeterministicAnalysis("Server high demand auto-failover: computed via calibrated colorimetry matrix"));
   }
 
-  // Graceful fallback to deterministic high-precision colorimetry response
-  console.info("Gemini models temporarily busy; serving high-precision deterministic formulation.");
-  return res.json(buildDeterministicAnalysis("Server high demand auto-failover: computed via calibrated colorimetry matrix"));
+  // Fallback if no text in response
+  return res.json(buildDeterministicAnalysis("No AI content generated: computed via calibrated colorimetry matrix"));
 });
 
 async function startServer() {

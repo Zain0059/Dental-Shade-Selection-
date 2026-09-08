@@ -15,18 +15,14 @@ import {
   SubstrateConfig 
 } from "../types/dental";
 import { STUMP_DIE_SHADES, calculateCeramicRecipe } from "../lib/dentalShadesData";
+import { useCaseContext } from "../context/CaseContext";
 
-interface SubstratePreparationPanelProps {
-  substrate: SubstrateConfig;
-  onChangeSubstrate: (updated: Partial<SubstrateConfig>) => void;
-  targetShadeCode: string;
-}
+export const SubstratePreparationPanel: React.FC = () => {
+  const { state, dispatch, classicalMatches } = useCaseContext();
+  const { substrate, selectedMatch } = state;
+  const onChangeSubstrate = (updated: Partial<SubstrateConfig>) => dispatch({ type: "UPDATE_SUBSTRATE", payload: updated });
+  const targetShadeCode = selectedMatch?.shade.code || classicalMatches[0].shade.code;
 
-export const SubstratePreparationPanel: React.FC<SubstratePreparationPanelProps> = ({
-  substrate,
-  onChangeSubstrate,
-  targetShadeCode,
-}) => {
   const recipe = calculateCeramicRecipe(targetShadeCode, substrate);
 
   return (

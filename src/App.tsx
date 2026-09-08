@@ -1,41 +1,6 @@
-import React, { useState, useEffect, useReducer, useMemo } from "react";
-import { 
-  CIELABColor, 
-  ClinicalCase, 
-  ClinicalProtocolChecklist, 
-  MunsellColor, 
-  RGBColor, 
-  ShadeMatchResult, 
-  SubstrateConfig, 
-  ZoneData 
-} from "./types/dental";
-import { CLINICAL_CASES } from "./lib/sampleCases";
-import { 
-  BLEACH_SHADES, 
-  VITA_3D_MASTER_SHADES, 
-  VITA_CLASSICAL_SHADES 
-} from "./lib/dentalShadesData";
-import { 
-  findClosestShades, 
-  sRGBToCIELAB, 
-  translateLabToMunsell, 
-  applyCalibration 
-} from "./lib/colorScience";
-import { 
-  validateImageUpload, 
-  validateAiAnalysisResponse 
-} from "./lib/validationSchemas";
-import { 
-  caseReducer, 
-  createInitialState 
-} from "./store/caseStore";
-import { 
-  CheckCircle2, 
-  AlertTriangle, 
-  AlertCircle, 
-  Info, 
-  X 
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { validateImageUpload, validateAiAnalysisResponse } from "./lib/validationSchemas";
+import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from "lucide-react";
 import { Navbar } from "./components/Navbar";
 import { ToothCanvasViewer } from "./components/ToothCanvasViewer";
 import { ColorMetricsPanel } from "./components/ColorMetricsPanel";
@@ -45,17 +10,14 @@ import { ClinicalChecklistModal } from "./components/ClinicalChecklistModal";
 import { CameraSettingsDrawer } from "./components/CameraSettingsDrawer";
 import { LabPrescriptionModal } from "./components/LabPrescriptionModal";
 import { AiAnalysisDrawer } from "./components/AiAnalysisDrawer";
-import { ChairsideAssistant } from "./components/ChairsideAssistant";
 import { GuidedFlowWizard } from "./components/GuidedFlowWizard";
+import { useCaseContext } from "./context/CaseContext";
+import { CLINICAL_CASES } from "./lib/sampleCases";
+import { ClinicalCase, RGBColor, CIELABColor } from "./types/dental";
 
 export default function App() {
-  // View Mode: "guided" (3-Step Wizard) vs "chairside" (Quick View) vs "advanced" (Lab & Colorimetry)
-  const [viewMode, setViewMode] = useState<"guided" | "chairside" | "advanced">("guided");
-
-  // Centralized Case Store Reducer
-  const [state, dispatch] = useReducer(caseReducer, undefined, () =>
-    createInitialState(CLINICAL_CASES[0])
-  );
+  const [showAdvancedPanels, setShowAdvancedPanels] = useState(false);
+  const { state, dispatch, classicalMatches, threeDMatches, bleachMatches, zones } = useCaseContext();
 
   const {
     currentCase,
@@ -92,7 +54,7 @@ export default function App() {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [notification]);
+  }, [notification, dispatch]);
 
   // Hydration protocol timer interval
   useEffect(() => {
@@ -103,7 +65,7 @@ export default function App() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [checklist.hydrationElapsedSeconds]);
+  }, [checklist.hydrationElapsedSeconds, dispatch]);
 
   // Select Clinical Case
   const handleSelectCase = (newCase: ClinicalCase) => {
@@ -117,7 +79,6 @@ export default function App() {
 
   // Gray Card Reference Calibration
   const handleCalibrateFromPoint = (sampledGrayRgb: RGBColor) => {
-    // 18% neutral gray target in sRGB ~ 119
     const target = 119;
     const rMult = sampledGrayRgb.r > 0 ? target / sampledGrayRgb.r : 1.0;
     const gMult = sampledGrayRgb.g > 0 ? target / sampledGrayRgb.g : 1.0;
@@ -145,87 +106,7 @@ export default function App() {
     });
   };
 
-  // Top Matches for Active Point
-  const classicalMatches = useMemo(() => {
-    return findClosestShades(sampledLab, VITA_CLASSICAL_SHADES, 4);
-  }, [sampledLab]);
-
-  const threeDMatches = useMemo(() => {
-    return findClosestShades(sampledLab, VITA_3D_MASTER_SHADES, 4);
-  }, [sampledLab]);
-
-  const bleachMatches = useMemo(() => {
-    return findClosestShades(sampledLab, BLEACH_SHADES, 4);
-  }, [sampledLab]);
-
-  // 3-Zone Dynamic Model
-  const zones: { cervical: ZoneData; middle: ZoneData; incisal: ZoneData } = useMemo(() => {
-    // Cervical zone: warmer (+b*, slightly lower L*)
-    const cervLab: CIELABColor = {
-      L: Math.max(0, sampledLab.L - 3.5),
-      a: sampledLab.a + 0.8,
-      b: sampledLab.b + 3.2,
-    };
-    const cervClassical = findClosestShades(cervLab, VITA_CLASSICAL_SHADES, 1)[0];
-    const cerv3D = findClosestShades(cervLab, VITA_3D_MASTER_SHADES, 1)[0];
-
-    // Middle zone: core sampled point
-    const midClassical = classicalMatches[0];
-    const mid3D = threeDMatches[0];
-
-    // Incisal zone: higher translucency, lower b* (cooler opalescent halo)
-    const incLab: CIELABColor = {
-      L: Math.min(100, sampledLab.L + 2.0),
-      a: sampledLab.a - 0.9,
-      b: Math.max(2, sampledLab.b - 4.5),
-    };
-    const incClassical = findClosestShades(incLab, VITA_CLASSICAL_SHADES, 1)[0];
-    const inc3D = findClosestShades(incLab, VITA_3D_MASTER_SHADES, 1)[0];
-
-    return {
-      cervical: {
-        zone: "cervical",
-        label: "Cervical Third (Gingival)",
-        description: "Warmer saturation (+b*), thinner enamel, strong dentin presence.",
-        relativeYRange: [0.0, 0.33],
-        sampledLab: cervLab,
-        sampledRgb: { r: 215, g: 178, b: 117, hex: "#d7b275" },
-        munsell: translateLabToMunsell(cervLab),
-        matchedClassical: cervClassical,
-        matched3D: cerv3D,
-        translucencyIndex: 22,
-        opticalCharacteristics: ["High Chroma Saturation", "Warm Terracotta/Ochre", "Dentin Emergence Profile"],
-      },
-      middle: {
-        zone: "middle",
-        label: "Middle Third (Body)",
-        description: "Core tooth base shade, maximum aesthetic relevance and value reference.",
-        relativeYRange: [0.33, 0.66],
-        sampledLab,
-        sampledRgb,
-        munsell,
-        matchedClassical: midClassical,
-        matched3D: mid3D,
-        translucencyIndex: 58,
-        opticalCharacteristics: ["Dominant Aesthetic Value", "Base Body Dentin", "Balanced Chroma"],
-      },
-      incisal: {
-        zone: "incisal",
-        label: "Incisal Third (Edge)",
-        description: "High translucency, opalescent light scattering (blue reflection / amber transmission), mamelon lobes.",
-        relativeYRange: [0.66, 1.0],
-        sampledLab: incLab,
-        sampledRgb: { r: 228, g: 218, b: 192, hex: "#e4dac0" },
-        munsell: translateLabToMunsell(incLab),
-        matchedClassical: incClassical,
-        matched3D: inc3D,
-        translucencyIndex: 88,
-        opticalCharacteristics: ["3-Lobe Mamelon Architecture", "Opal Effect (OE1/OE2)", "Amber Halo Rim"],
-      },
-    };
-  }, [sampledLab, sampledRgb, munsell, classicalMatches, threeDMatches]);
-
-  // Handle Photo Upload with runtime validation (size & MIME type)
+  // Handle Photo Upload with runtime validation
   const handleUploadClick = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -262,7 +143,7 @@ export default function App() {
     input.click();
   };
 
-  // Run AI Master Ceramist Analysis with timeout, cancellation & race condition protection
+  // Run AI Master Ceramist Analysis
   const handleRunAiAnalysis = async () => {
     const requestId = "req_" + Math.random().toString(36).substring(2, 9);
     const sessionSnapshot = caseSessionId;
@@ -379,8 +260,8 @@ export default function App() {
         onUploadClick={handleUploadClick}
         onStartNewCase={handleStartNewCase}
         isAiLoading={isAiLoading}
-        viewMode={viewMode}
-        onToggleViewMode={setViewMode}
+        showAdvancedPanels={showAdvancedPanels}
+        onToggleAdvancedPanels={() => setShowAdvancedPanels(!showAdvancedPanels)}
       />
 
       {/* Main Clinical Dashboard */}
@@ -416,128 +297,31 @@ export default function App() {
           </div>
         )}
 
-        {viewMode === "guided" ? (
+        {!showAdvancedPanels ? (
           <GuidedFlowWizard
-            currentCase={currentCase}
-            cases={CLINICAL_CASES}
-            onSelectCase={handleSelectCase}
-            crossPolarized={crossPolarized}
-            onTogglePolarized={() => dispatch({ type: "TOGGLE_POLARIZATION" })}
-            sampledLab={sampledLab}
-            sampledRgb={sampledRgb}
-            topMatch={selectedMatch || classicalMatches[0]}
-            allClassicalMatches={classicalMatches}
-            threeDMatch={threeDMatches[0]}
-            bleachMatches={bleachMatches}
-            zones={zones}
-            substrate={substrate}
-            onChangeSubstrate={(up) => dispatch({ type: "UPDATE_SUBSTRATE", payload: up })}
-            onSelectShade={(match) => dispatch({ type: "SELECT_SHADE", payload: match })}
-            checklist={checklist}
-            onUpdateChecklist={(up) => dispatch({ type: "UPDATE_CHECKLIST", payload: up })}
             onOpenChecklistModal={() => setIsChecklistOpen(true)}
             onOpenCameraGuide={() => setIsCameraGuideOpen(true)}
             onUploadClick={handleUploadClick}
             onOpenAiAnalysis={handleRunAiAnalysis}
             onOpenLabPrescription={() => setIsLabPrescriptionOpen(true)}
             onStartNewCase={handleStartNewCase}
-            isAiLoading={isAiLoading}
-            activeZoneFilter={activeZoneFilter}
-            onSelectZoneFilter={(z) => dispatch({ type: "SET_ZONE_FILTER", payload: z })}
             childrenCanvas={
-              <ToothCanvasViewer
-                currentCase={currentCase}
-                crossPolarized={crossPolarized}
-                onTogglePolarized={() => dispatch({ type: "TOGGLE_POLARIZATION" })}
-                isCalibrated={isCalibrated}
-                calibrationMultipliers={calibrationMultipliers}
-                onCalibrateFromPoint={handleCalibrateFromPoint}
-                onResetCalibration={handleResetCalibration}
-                sampledPoint={sampledPoint}
-                onSelectSamplePoint={handleSelectSamplePoint}
-                customImage={customImage}
-                cases={CLINICAL_CASES}
-                onSelectCase={handleSelectCase}
-                activeZoneFilter={activeZoneFilter}
-                onSelectZoneFilter={(z) => dispatch({ type: "SET_ZONE_FILTER", payload: z })}
-              />
+              <ToothCanvasViewer />
             }
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             {/* Left Column: Interactive Tooth Viewport */}
             <div className="lg:col-span-7 space-y-5">
-              <ToothCanvasViewer
-                currentCase={currentCase}
-                crossPolarized={crossPolarized}
-                onTogglePolarized={() => dispatch({ type: "TOGGLE_POLARIZATION" })}
-                isCalibrated={isCalibrated}
-                calibrationMultipliers={calibrationMultipliers}
-                onCalibrateFromPoint={handleCalibrateFromPoint}
-                onResetCalibration={handleResetCalibration}
-                sampledPoint={sampledPoint}
-                onSelectSamplePoint={handleSelectSamplePoint}
-                customImage={customImage}
-                cases={CLINICAL_CASES}
-                onSelectCase={handleSelectCase}
-                activeZoneFilter={activeZoneFilter}
-                onSelectZoneFilter={(z) => dispatch({ type: "SET_ZONE_FILTER", payload: z })}
-              />
+              <ToothCanvasViewer />
 
-              {/* Show Zonal Shade Mapping only in Advanced Mode or as secondary guide */}
-              {viewMode === "advanced" && (
-                <ZonalShadeMapping
-                  zones={zones}
-                  onSelectZone={(z) => dispatch({ type: "SET_ZONE_FILTER", payload: z })}
-                  activeZone={activeZoneFilter}
-                />
-              )}
+              <ZonalShadeMapping />
             </div>
 
-            {/* Right Column: Dynamic based on view mode */}
+            {/* Right Column: Advanced panels */}
             <div className="lg:col-span-5 space-y-5">
-              {viewMode === "chairside" ? (
-                <ChairsideAssistant
-                  currentCase={currentCase}
-                  sampledLab={sampledLab}
-                  sampledRgb={sampledRgb}
-                  topMatch={selectedMatch || classicalMatches[0]}
-                  allClassicalMatches={classicalMatches}
-                  threeDMatch={threeDMatches[0]}
-                  zones={zones}
-                  substrate={substrate}
-                  onChangeSubstrate={(up) => dispatch({ type: "UPDATE_SUBSTRATE", payload: up })}
-                  onSelectShade={(match) => dispatch({ type: "SELECT_SHADE", payload: match })}
-                  onOpenAiAnalysis={handleRunAiAnalysis}
-                  onOpenLabPrescription={() => setIsLabPrescriptionOpen(true)}
-                  isAiLoading={isAiLoading}
-                  activeZoneFilter={activeZoneFilter}
-                  onSelectZoneFilter={(z) => dispatch({ type: "SET_ZONE_FILTER", payload: z })}
-                  crossPolarized={crossPolarized}
-                  onTogglePolarized={() => dispatch({ type: "TOGGLE_POLARIZATION" })}
-                />
-              ) : (
-                <>
-                  <ColorMetricsPanel
-                    sampledLab={sampledLab}
-                    sampledRgb={sampledRgb}
-                    munsell={munsell}
-                    classicalMatches={classicalMatches}
-                    threeDMatches={threeDMatches}
-                    bleachMatches={bleachMatches}
-                    activeSystemTab={activeSystemTab}
-                    onSelectSystemTab={(tab) => dispatch({ type: "SET_SYSTEM_TAB", payload: tab })}
-                    onSelectSpecificMatch={(match) => dispatch({ type: "SELECT_SHADE", payload: match })}
-                    selectedMatch={selectedMatch}
-                  />
-
-                  <SubstratePreparationPanel
-                    substrate={substrate}
-                    onChangeSubstrate={(up) => dispatch({ type: "UPDATE_SUBSTRATE", payload: up })}
-                    targetShadeCode={selectedMatch?.shade.code || classicalMatches[0].shade.code}
-                  />
-                </>
-              )}
+              <ColorMetricsPanel />
+              <SubstratePreparationPanel />
             </div>
           </div>
         )}
