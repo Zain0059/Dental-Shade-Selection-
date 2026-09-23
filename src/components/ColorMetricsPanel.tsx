@@ -66,7 +66,7 @@ export const ColorMetricsPanel: React.FC = () => {
           <div>
             <div className="font-bold text-sm text-rose-900">Measurement Invalid / Non-Finite Coordinate</div>
             <p className="text-xs text-rose-700 mt-0.5">
-              The sampled point or color space calculation returned non-finite coordinates. Click a valid tooth pixel region to measure CIEDE2000 difference accurately.
+              The sampled point or color space calculation returned non-finite coordinates. Click a valid tooth pixel region to measure CIEDE2000 difference.
             </p>
           </div>
         </div>

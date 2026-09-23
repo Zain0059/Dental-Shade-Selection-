@@ -74,7 +74,7 @@ export const AiAnalysisDrawer: React.FC<AiAnalysisDrawerProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-neutral-900">AI Master Ceramist Engine</h2>
+                <h2 className="text-lg font-bold text-neutral-900">AI Layering Assistant</h2>
                 <span className="text-[10px] font-mono bg-teal-600/20 text-neutral-700 border border-neutral-200 px-2 py-0.5 rounded font-medium">
                   {result?.isAiGenerated ? result.modelUsed : "Image observations"}
                 </span>

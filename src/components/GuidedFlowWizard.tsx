@@ -5,6 +5,7 @@ import { Step1Capture } from "./wizard/Step1Capture";
 import { Step2SelectShade } from "./wizard/Step2SelectShade";
 import { Step3ExportOrder } from "./wizard/Step3ExportOrder";
 import { useCaseContext } from "../context/CaseContext";
+import { CaseHeaderBar } from "./CaseHeaderBar";
 import { CLINICAL_CASES } from "../lib/sampleCases";
 
 interface GuidedFlowWizardProps {
@@ -45,6 +46,7 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
   const threeDMatch = threeDMatches[0];
   
   const cases = CLINICAL_CASES;
+
   const onSelectCase = (c: any) => dispatch({ type: "LOAD_CASE", payload: { caseItem: c } });
   const onTogglePolarized = () => dispatch({ type: "TOGGLE_POLARIZATION" });
   const onChangeSubstrate = (updated: any) => dispatch({ type: "UPDATE_SUBSTRATE", payload: updated });
@@ -65,111 +67,49 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
   const allChecklistPassed = isChecklistComplete(checklist);
 
   return (
-    <div className="space-y-6">
-      {/* 3-Step Guided Progress Header */}
-      <div className="bg-white border border-neutral-200 rounded-2xl p-3 sm:p-4 shadow-sm w-full min-w-0">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 w-full min-w-0">
-          {/* Stepper Tabs */}
-          <div className="flex items-center w-full sm:w-auto overflow-x-auto no-scrollbar justify-between sm:justify-start gap-1.5 sm:gap-3 py-0.5">
-            {/* Step 1 */}
+    <div className="space-y-4 pb-20 w-full min-w-0">
+      <CaseHeaderBar />
+
+      {/* 3-Step Guided Progress Header (Compact & Equal Width) */}
+      <div className="w-full flex items-center justify-between gap-2 mb-2">
+        {[
+          { num: 1, label: "Capture" },
+          { num: 2, label: "Match" },
+          { num: 3, label: "Review" },
+        ].map((step) => {
+          const isCompleted = currentStep > step.num;
+          const isCurrent = currentStep === step.num;
+          return (
             <button
-              id="step-tab-1"
-              onClick={() => setCurrentStep(1)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition border shrink-0 ${
-                currentStep === 1
-                  ? "bg-teal-600 text-white border-teal-600 shadow-sm"
-                  : currentStep > 1
-                  ? "bg-neutral-100 text-emerald-600 border-emerald-500/30"
-                  : "bg-white text-neutral-500 border-neutral-200"
+              key={step.num}
+              onClick={() => setCurrentStep(step.num as any)}
+              className={`flex-1 flex flex-col items-center justify-center py-2 rounded-xl border transition ${
+                isCurrent
+                  ? "bg-teal-50 border-teal-600 shadow-sm"
+                  : isCompleted
+                  ? "bg-neutral-50 border-neutral-300 hover:bg-neutral-100"
+                  : "bg-white border-neutral-200 opacity-70 hover:opacity-100"
               }`}
             >
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                currentStep === 1 ? "bg-neutral-50 text-teal-700" : currentStep > 1 ? "bg-emerald-500/20 text-emerald-700" : "bg-neutral-100 text-neutral-500"
-              }`}>
-                {currentStep > 1 ? <Check className="w-3 h-3" /> : "1"}
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    isCurrent
+                      ? "bg-teal-600 text-white"
+                      : isCompleted
+                      ? "bg-emerald-500 text-white"
+                      : "bg-neutral-200 text-neutral-500"
+                  }`}
+                >
+                  {isCompleted ? <Check className="w-3 h-3" /> : step.num}
+                </div>
+                <span className={`text-[11px] font-bold ${isCurrent ? "text-teal-800" : isCompleted ? "text-neutral-700" : "text-neutral-500"}`}>
+                  {step.label}
+                </span>
               </div>
-              <span className="hidden sm:inline">Step 1: Capture &amp; Align</span>
-              <span className="sm:hidden">1. Capture</span>
             </button>
-
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-
-            {/* Step 2 */}
-            <button
-              id="step-tab-2"
-              onClick={() => setCurrentStep(2)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition border shrink-0 ${
-                currentStep === 2
-                  ? "bg-teal-600 text-white border-teal-600 shadow-sm"
-                  : currentStep > 2
-                  ? "bg-neutral-100 text-emerald-600 border-emerald-500/30"
-                  : "bg-white text-neutral-500 border-neutral-200"
-              }`}
-            >
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                currentStep === 2 ? "bg-neutral-50 text-teal-700" : currentStep > 2 ? "bg-emerald-500/20 text-emerald-700" : "bg-neutral-100 text-neutral-500"
-              }`}>
-                {currentStep > 2 ? <Check className="w-3 h-3" /> : "2"}
-              </div>
-              <span className="hidden sm:inline">Step 2: Select Shade</span>
-              <span className="sm:hidden">2. Shade</span>
-            </button>
-
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-
-            {/* Step 3 */}
-            <button
-              id="step-tab-3"
-              onClick={() => setCurrentStep(3)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition border shrink-0 ${
-                currentStep === 3
-                  ? "bg-teal-600 text-white border-teal-600 shadow-sm"
-                  : "bg-white text-neutral-500 border-neutral-200"
-              }`}
-            >
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                currentStep === 3 ? "bg-neutral-50 text-teal-700" : "bg-neutral-100 text-neutral-500"
-              }`}>
-                3
-              </div>
-              <span className="hidden sm:inline">Step 3: Export &amp; Order</span>
-              <span className="sm:hidden">3. Export</span>
-            </button>
-          </div>
-
-          {/* Quick Flow Navigator */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
-            {currentStep > 1 && (
-              <button
-                onClick={() => setCurrentStep((prev) => (prev - 1) as any)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-xs font-semibold transition border border-neutral-300"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Back</span>
-              </button>
-            )}
-
-            {currentStep < 3 ? (
-              <button
-                id="btn-next-step"
-                onClick={() => setCurrentStep((prev) => (prev + 1) as any)}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm"
-              >
-                <span>Proceed to Step {currentStep + 1}</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                id="btn-restart-flow"
-                onClick={handleStartNewCase}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-xs font-semibold transition border border-neutral-300"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>New Case Flow</span>
-              </button>
-            )}
-          </div>
-        </div>
+          );
+        })}
       </div>
 
       {currentStep === 1 && (
@@ -203,6 +143,7 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
           isAiLoading={isAiLoading}
           activeZoneFilter={activeZoneFilter}
           onSelectZoneFilter={onSelectZoneFilter}
+          childrenCanvas={childrenCanvas}
           onPrevStep={() => setCurrentStep(1)}
           onNextStep={() => setCurrentStep(3)}
         />
@@ -222,6 +163,9 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
           onOpenLabPrescription={onOpenLabPrescription}
           onOpenAiAnalysis={onOpenAiAnalysis}
           isAiLoading={isAiLoading}
+          aiResult={state.aiResult}
+          isAiRecipeStale={state.isAiRecipeStale}
+          childrenCanvas={childrenCanvas}
           onStartNewCase={handleStartNewCase}
           onPrevStep={() => setCurrentStep(2)}
         />

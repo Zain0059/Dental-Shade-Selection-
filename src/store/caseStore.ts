@@ -35,6 +35,7 @@ export interface CaseState {
   // Session tracking & race condition prevention
   caseSessionId: string;
   activeAiRequestId: string | null;
+  caseScope: "quick" | "full";
 
   // Active Case & Images
   currentCase: ClinicalCase;
@@ -72,6 +73,7 @@ export interface CaseState {
 
   // AI Ceramist State
   aiResult: any | null;
+  isAiRecipeStale: boolean;
   isAiLoading: boolean;
   aiError: string | null;
 
@@ -132,6 +134,7 @@ export type CaseAction =
     }
   | { type: "CLEAR_AI_RESULT" }
   | { type: "UPDATE_CHECKLIST"; payload: Partial<ClinicalProtocolChecklist> }
+  | { type: "SET_CASE_SCOPE"; payload: "quick" | "full" }
   | { type: "SET_NOTIFICATION"; payload: { type: "success" | "error" | "info" | "warning"; message: string } | null }
   | { type: "CLEAR_NOTIFICATION" };
 
@@ -141,6 +144,8 @@ export function generateSessionId(): string {
   return "case_session_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
 }
 
+let persistedCaseScope: "quick" | "full" = "quick";
+
 export function createInitialState(initialCase: ClinicalCase = CLINICAL_CASES[0]): CaseState {
   const lab = sRGBToCIELAB(DEFAULT_RAW_RGB.r, DEFAULT_RAW_RGB.g, DEFAULT_RAW_RGB.b);
   const munsell = translateLabToMunsell(lab);
@@ -148,6 +153,7 @@ export function createInitialState(initialCase: ClinicalCase = CLINICAL_CASES[0]
   return {
     caseSessionId: generateSessionId(),
     activeAiRequestId: null,
+    caseScope: persistedCaseScope,
     currentCase: initialCase,
     crossPolarized: false,
     zoneSamples: {},
@@ -180,6 +186,7 @@ export function createInitialState(initialCase: ClinicalCase = CLINICAL_CASES[0]
       crossPolarizerMountedChecked: false,
     },
     aiResult: null,
+    isAiRecipeStale: false,
     isAiLoading: false,
     aiError: null,
     notification: null,
@@ -219,6 +226,14 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
           type: "info",
           message: `Loaded clinical case: ${selected.toothNumber} - ${selected.title}`,
         },
+      };
+    }
+
+    case "SET_CASE_SCOPE": {
+      persistedCaseScope = action.payload;
+      return {
+        ...state,
+        caseScope: action.payload,
       };
     }
 
@@ -326,6 +341,7 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
           ...state.substrate,
           ...action.payload,
         },
+        isAiRecipeStale: state.aiResult !== null,
       };
     }
 
@@ -333,6 +349,7 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
       return {
         ...state,
         selectedMatch: action.payload,
+        isAiRecipeStale: state.aiResult !== null,
       };
     }
 
@@ -380,6 +397,7 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
         isAiLoading: false,
         activeAiRequestId: null,
         aiResult: action.payload.result,
+        isAiRecipeStale: false,
         aiError: null,
         notification: {
           id: Math.random().toString(36),

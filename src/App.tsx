@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { validateImageUpload, validateAiAnalysisResponse } from "./lib/validationSchemas";
-import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from "lucide-react";
+import { CheckCircle2, AlertTriangle, AlertCircle, Info, X, User, Hash, FileText, Activity } from "lucide-react";
 import { Navbar } from "./components/Navbar";
 import { ToothCanvasViewer } from "./components/ToothCanvasViewer";
 import { ColorMetricsPanel } from "./components/ColorMetricsPanel";
@@ -236,13 +236,84 @@ export default function App() {
           </div>
         )}
 
-        <section className="mb-4 bg-white border rounded-xl p-4 grid sm:grid-cols-3 gap-3 text-sm">
-          <label>Patient identifier<input aria-label="Patient identifier" className="block border rounded p-2 w-full" value={currentCase.patientInitials}
-            onChange={e => dispatch({ type: "UPDATE_CASE_DETAILS", payload: { patientInitials: e.target.value } })} /></label>
-          <label>Tooth number<input aria-label="Tooth number" className="block border rounded p-2 w-full" value={currentCase.toothNumber}
-            onChange={e => dispatch({ type: "UPDATE_CASE_DETAILS", payload: { toothNumber: e.target.value } })} /></label>
-          <label>Clinical notes<input aria-label="Clinical notes" className="block border rounded p-2 w-full" value={currentCase.clinicalNotes}
-            onChange={e => dispatch({ type: "UPDATE_CASE_DETAILS", payload: { clinicalNotes: e.target.value } })} /></label>
+        {/* Clinical Case Header & Metadata Card */}
+        <section className="mb-5 bg-white border border-neutral-200/90 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0">
+                <Activity className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-sm font-bold text-neutral-900">
+                    Clinical Case Information
+                  </h2>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                    Tooth #{currentCase.toothNumber.replace('#', '') || 'Unassigned'}
+                  </span>
+                  <span className="text-[10px] font-medium text-neutral-500">
+                    &bull; {currentCase.title}
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-500 mt-0.5">
+                  Record verified patient details and clinical observations for the lab prescription.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-neutral-400 font-mono hidden md:inline">
+                Session: {caseSessionId.slice(0, 16)}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
+            <div className="sm:col-span-3">
+              <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-teal-600" />
+                Patient identifier
+                <input
+                  aria-label="Patient identifier"
+                  type="text"
+                  placeholder="e.g. PT-1042 or Initials"
+                  className="mt-1 block w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-neutral-900 font-medium placeholder:text-neutral-400 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 transition"
+                  value={currentCase.patientInitials}
+                  onChange={e => dispatch({ type: "UPDATE_CASE_DETAILS", payload: { patientInitials: e.target.value } })}
+                />
+              </label>
+            </div>
+
+            <div className="sm:col-span-3">
+              <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <Hash className="w-3.5 h-3.5 text-teal-600" />
+                Tooth number
+                <input
+                  aria-label="Tooth number"
+                  type="text"
+                  placeholder="e.g. 11, 21, or #8"
+                  className="mt-1 block w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-neutral-900 font-medium placeholder:text-neutral-400 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 transition"
+                  value={currentCase.toothNumber}
+                  onChange={e => dispatch({ type: "UPDATE_CASE_DETAILS", payload: { toothNumber: e.target.value } })}
+                />
+              </label>
+            </div>
+
+            <div className="sm:col-span-6">
+              <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-teal-600" />
+                Clinical notes
+                <input
+                  aria-label="Clinical notes"
+                  type="text"
+                  placeholder="Substrate notes, vital vs endo, desired incisal opalescence, halo effect..."
+                  className="mt-1 block w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-neutral-900 font-medium placeholder:text-neutral-400 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 transition"
+                  value={currentCase.clinicalNotes}
+                  onChange={e => dispatch({ type: "UPDATE_CASE_DETAILS", payload: { clinicalNotes: e.target.value } })}
+                />
+              </label>
+            </div>
+          </div>
         </section>
 
         {!showAdvancedPanels ? (

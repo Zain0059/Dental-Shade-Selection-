@@ -2,18 +2,46 @@
 
 /* ==========================================================================
    TabibShade Design Tokens — Premium Clinical Minimalism
-   One neutral scale, one clinical accent (teal), status colors used sparingly.
    ========================================================================== */
 @theme {
-  --font-sans: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: "IBM Plex Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  /* Restrained clinical accent (deep teal) */
-  --color-teal-50: #f0f9f8;
-  --color-teal-100: #dbeeec;
-  --color-teal-500: #0d7d78;
-  --color-teal-600: #0b6b66;
-  --color-teal-700: #0a5854;
+  /* Theme Overrides */
+  --color-neutral-50: #F4F6F7; /* App background */
+  --color-neutral-100: #F4F6F7; 
+  --color-neutral-200: #DCE2E5; /* Dividers */
+  --color-neutral-300: #7B878C; /* Control borders */
+  --color-neutral-400: #7B878C;
+  --color-neutral-500: #536168; /* Secondary text */
+  --color-neutral-600: #536168;
+  --color-neutral-700: #172126; /* Primary text */
+  --color-neutral-800: #172126;
+  --color-neutral-900: #172126;
+  
+  --color-black: #D9D9D9; /* Image surround / canvas */
+  --color-white: #FFFFFF; /* Surface */
 
+  --color-teal-50: #E6F0EF; /* Light accent background */
+  --color-teal-100: #CCE1DF;
+  --color-teal-500: #006B68;
+  --color-teal-600: #006B68; /* Primary accent */
+  --color-teal-700: #006B68;
+  
+  --color-emerald-500: #006B68;
+  --color-emerald-600: #006B68;
+  --color-emerald-700: #006B68;
+
+  --color-amber-50: #FFF4E5; /* Caution bg */
+  --color-amber-500: #8A4B08; /* Caution text/border */
+  --color-amber-600: #8A4B08;
+  --color-amber-700: #8A4B08;
+
+  --color-rose-50: #FFF1F0; /* Error bg */
+  --color-rose-500: #B42318; /* Error text/border */
+  --color-rose-600: #B42318;
+  --color-rose-700: #B42318;
+  
   --radius-card: 16px;
   --radius-control: 10px;
 }
@@ -25,6 +53,15 @@ html, body, #root {
 body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  background-color: var(--color-neutral-50);
+  color: var(--color-neutral-900);
+  font-family: var(--font-sans);
+  font-size: 16px;
+}
+
+/* Tabular numerals for mono classes */
+.font-mono {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Consistent focus ring across the app for accessibility */
@@ -33,7 +70,7 @@ select:focus-visible,
 input:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--color-teal-500);
+  outline: 2px solid var(--color-teal-600);
   outline-offset: 2px;
 }
 
@@ -45,7 +82,7 @@ a:focus-visible,
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: var(--color-neutral-300); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 /* ==========================================================================
