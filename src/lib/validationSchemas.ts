@@ -119,23 +119,19 @@ export function validateAiAnalysisResponse(raw: any): ValidationResult<any> {
     return { isValid: false, errors: ["AI response payload is not an object."] };
   }
 
-  if (typeof raw.summary !== "string" || !raw.summary.trim()) {
-    errors.push("Missing or non-string clinical summary.");
-  }
-
-  if (!raw.morphology || typeof raw.morphology !== "object") {
-    errors.push("Missing morphology assessment block.");
-  }
-
-  if (!raw.ceramicRecipe || typeof raw.ceramicRecipe !== "object") {
-    errors.push("Missing ceramic formulation recipe.");
-  }
-
-  if (raw.trafficLight && typeof raw.trafficLight === "object") {
-    const status = raw.trafficLight.status;
-    if (status && !["green", "yellow", "red"].includes(status)) {
-      errors.push(`Invalid traffic light status '${status}'.`);
+  if (raw.success === false) errors.push("Analysis failed.");
+  if (typeof raw.summary !== "string" || !raw.summary.trim()) errors.push("Missing summary.");
+  const blocks = {
+    morphology: ["mamelons", "translucencyGrade", "cervicalWarmth", "surfaceTexture", "whiteSpots"],
+    ceramicRecipe: ["ingot", "cervicalModifier", "bodyPowder", "incisalPowder", "firingNotes"],
+  };
+  for (const [block, fields] of Object.entries(blocks)) {
+    for (const field of fields) {
+      if (typeof raw[block]?.[field] !== "string" || !raw[block][field].trim()) errors.push(`Invalid ${block}.${field}`);
     }
+  }
+  if (!Array.isArray(raw.clinicalRecommendations) || !raw.clinicalRecommendations.every((v: unknown) => typeof v === "string")) {
+    errors.push("Invalid recommendations.");
   }
 
   return {
@@ -193,4 +189,9 @@ export async function copyToClipboard(text: string): Promise<{ success: boolean;
     success: false,
     error: "Clipboard access is unavailable in this environment.",
   };
+}
+
+export function isChecklistComplete(checklist: import("../types/dental").ClinicalProtocolChecklist): boolean {
+  return checklist.hydrationChecked && checklist.daylightLighting5500KChecked && checklist.criAbove90Checked
+    && checklist.neutralBibChecked && checklist.lipstickRemovedChecked && checklist.crossPolarizerMountedChecked;
 }

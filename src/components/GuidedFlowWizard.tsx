@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { isChecklistComplete } from "../lib/validationSchemas";
+import React, { useState, useEffect } from "react";
 import { ChevronRight, ChevronLeft, Check, RotateCcw } from "lucide-react";
 import { Step1Capture } from "./wizard/Step1Capture";
 import { Step2SelectShade } from "./wizard/Step2SelectShade";
@@ -26,6 +27,7 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
   childrenCanvas,
 }) => {
   const { state, dispatch, classicalMatches, threeDMatches, bleachMatches, zones } = useCaseContext();
+  const systemMatches = state.activeSystemTab === "3d_master" ? threeDMatches : state.activeSystemTab === "bleach" ? bleachMatches : classicalMatches;
   const {
     currentCase,
     crossPolarized,
@@ -38,8 +40,8 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
     activeZoneFilter,
   } = state;
 
-  const topMatch = selectedMatch || classicalMatches[0];
-  const allClassicalMatches = classicalMatches;
+  const topMatch = selectedMatch || systemMatches[0];
+  const allClassicalMatches = systemMatches;
   const threeDMatch = threeDMatches[0];
   
   const cases = CLINICAL_CASES;
@@ -51,6 +53,7 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
   const onSelectZoneFilter = (zone: any) => dispatch({ type: "SET_ZONE_FILTER", payload: zone });
 
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  useEffect(() => setCurrentStep(1), [state.caseSessionId]);
 
   const handleStartNewCase = () => {
     setCurrentStep(1);
@@ -59,7 +62,7 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
     }
   };
 
-  const allChecklistPassed = Object.values(checklist).every((val) => val === true);
+  const allChecklistPassed = isChecklistComplete(checklist);
 
   return (
     <div className="space-y-6">

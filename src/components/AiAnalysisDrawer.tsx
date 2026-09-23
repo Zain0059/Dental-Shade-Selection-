@@ -45,6 +45,7 @@ interface AiAnalysisDrawerProps {
   onClose: () => void;
   isLoading: boolean;
   result: AiAnalysisResult | null;
+  error?: string | null;
   onReanalyze: () => void;
 }
 
@@ -53,12 +54,11 @@ export const AiAnalysisDrawer: React.FC<AiAnalysisDrawerProps> = ({
   onClose,
   isLoading,
   result,
+  error,
   onReanalyze,
 }) => {
   if (!isOpen) return null;
 
-  const trafficStatus = result?.trafficLight?.status || "green";
-  const confidenceScore = result?.trafficLight?.confidenceScore ?? 95;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
@@ -76,10 +76,10 @@ export const AiAnalysisDrawer: React.FC<AiAnalysisDrawerProps> = ({
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-neutral-900">AI Master Ceramist Engine</h2>
                 <span className="text-[10px] font-mono bg-teal-600/20 text-neutral-700 border border-neutral-200 px-2 py-0.5 rounded font-medium">
-                  {result?.isAiGenerated ? `${result.modelUsed || "Gemini"} • Neural Optical Logic` : "Calibrated Colorimetric Model"}
+                  {result?.isAiGenerated ? result.modelUsed : "Image observations"}
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Deep morphological tooth feature extraction &amp; ceramic formulation</p>
+              <p className="text-xs text-neutral-500">AI suggestions require image review and ceramist verification.</p>
             </div>
           </div>
           <button
@@ -97,12 +97,13 @@ export const AiAnalysisDrawer: React.FC<AiAnalysisDrawerProps> = ({
             <div className="space-y-1">
               <div className="font-bold text-sm text-neutral-800">Analyzing Clinical Colorimetry &amp; Mamelon Geometry...</div>
               <p className="text-xs text-neutral-500 max-w-md">
-                Computing CIELAB spectrophotometry, Munsell Value priority, and substrate compensation matrices.
+                Reviewing the supplied photograph and measured color data.
               </p>
             </div>
           </div>
         )}
 
+        {error && <p role="alert" className="mt-5 rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</p>}
         {/* Results View */}
         {!isLoading && result && (
           <div className="mt-5 space-y-4 text-xs">
@@ -121,16 +122,10 @@ export const AiAnalysisDrawer: React.FC<AiAnalysisDrawerProps> = ({
                   <Cpu className="w-4 h-4 text-neutral-700" />
                   Clinical Diagnostic Summary
                 </span>
-                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase border ${
-                  trafficStatus === "green"
-                    ? "bg-emerald-500/20 text-emerald-700 border-emerald-500/40"
-                    : "bg-amber-500/20 text-amber-700 border-amber-500/40"
-                }`}>
-                  Confidence: {confidenceScore}%
-                </span>
+
               </div>
               <p className="text-neutral-800 leading-relaxed">
-                {result.summary || "Target shade analyzed under D65 standard illuminant with custom ceramic ingot compensation."}
+                {result.summary || "Not assessed"}
               </p>
             </div>
 
@@ -144,19 +139,19 @@ export const AiAnalysisDrawer: React.FC<AiAnalysisDrawerProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-neutral-600">
                   <div className="bg-white/60 p-2.5 rounded-lg border border-neutral-200">
                     <strong className="text-teal-700 block mb-0.5">Mamelon Lobes:</strong>
-                    {result.morphology.mamelons || "3 distinct lobes in incisal third"}
+                    {result.morphology.mamelons || "Not assessed"}
                   </div>
                   <div className="bg-white/60 p-2.5 rounded-lg border border-neutral-200">
                     <strong className="text-teal-700 block mb-0.5">Incisal Translucency:</strong>
-                    {result.morphology.translucencyGrade || "Type 2 Opalescent Halo"}
+                    {result.morphology.translucencyGrade || "Not assessed"}
                   </div>
                   <div className="bg-white/60 p-2.5 rounded-lg border border-neutral-200">
                     <strong className="text-teal-700 block mb-0.5">Cervical Saturation:</strong>
-                    {result.morphology.cervicalWarmth || "Elevated warm chroma (+b*)"}
+                    {result.morphology.cervicalWarmth || "Not assessed"}
                   </div>
                   <div className="bg-white/60 p-2.5 rounded-lg border border-neutral-200">
                     <strong className="text-teal-700 block mb-0.5">Micro-Texture &amp; Glare:</strong>
-                    {result.morphology.surfaceTexture || "Perikymata and developmental grooves"}
+                    {result.morphology.surfaceTexture || "Not assessed"}
                   </div>
                 </div>
               </div>
@@ -170,12 +165,12 @@ export const AiAnalysisDrawer: React.FC<AiAnalysisDrawerProps> = ({
                   Ceramic Layering &amp; Ingot Recipe
                 </span>
                 <div className="space-y-1.5 text-neutral-600 leading-relaxed">
-                  <div><strong>Ingot Selection:</strong> <span className="text-teal-700 font-mono font-bold">{result.ceramicRecipe.ingot || "IPS e.max LT"}</span></div>
-                  <div><strong>Cervical Modifier:</strong> {result.ceramicRecipe.cervicalModifier || "Warm Ochre stain"}</div>
-                  <div><strong>Body Dentin:</strong> {result.ceramicRecipe.bodyPowder || "Standard Dentin A2 with Deep Dentin blend"}</div>
-                  <div><strong>Incisal Enamel / Opal:</strong> {result.ceramicRecipe.incisalPowder || "Enamel Opal 1 (OE1)"}</div>
+                  <div><strong>Ingot Selection:</strong> <span className="text-teal-700 font-mono font-bold">{result.ceramicRecipe.ingot || "Not assessed"}</span></div>
+                  <div><strong>Cervical Modifier:</strong> {result.ceramicRecipe.cervicalModifier || "Not assessed"}</div>
+                  <div><strong>Body Dentin:</strong> {result.ceramicRecipe.bodyPowder || "Not assessed"}</div>
+                  <div><strong>Incisal Enamel / Opal:</strong> {result.ceramicRecipe.incisalPowder || "Not assessed"}</div>
                   <div className="text-[11px] text-neutral-500 pt-1 border-t border-neutral-300">
-                    <strong>Firing Advice:</strong> {result.ceramicRecipe.firingNotes || "750°C vacuum firing, 2 min slow cool down."}
+                    <strong>Firing Advice:</strong> {result.ceramicRecipe.firingNotes || "Not assessed"}
                   </div>
                 </div>
               </div>

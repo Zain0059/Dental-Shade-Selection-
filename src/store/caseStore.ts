@@ -7,10 +7,12 @@ import {
   ShadeMatchResult,
   SubstrateConfig,
   ZoneData,
+  ToothZone,
 } from "../types/dental";
 import { CLINICAL_CASES } from "../lib/sampleCases";
 import {
   applyCalibration,
+  isValidRGB,
   calculateDeltaE00,
   findClosestShades,
   sRGBToCIELAB,
@@ -43,6 +45,8 @@ export interface CaseState {
     fileSizeBytes: number;
     uploadedAt: string;
   } | null;
+
+  zoneSamples: Partial<Record<ToothZone, { point: { x: number; y: number }; rawRgb: RGBColor }>>;
 
   // Calibration State
   isCalibrated: boolean;
@@ -87,11 +91,13 @@ export type CaseAction =
       };
     }
   | { type: "CLEAR_UPLOADED_IMAGE" }
+  | { type: "UPDATE_CASE_DETAILS"; payload: Partial<Pick<ClinicalCase, "patientInitials" | "toothNumber" | "clinicalNotes">> }
   | {
       type: "SAMPLE_POINT";
       payload: {
         point: { x: number; y: number } | null;
         rawRgb: RGBColor;
+        zone?: ToothZone;
       };
     }
   | {
@@ -129,7 +135,7 @@ export type CaseAction =
   | { type: "SET_NOTIFICATION"; payload: { type: "success" | "error" | "info" | "warning"; message: string } | null }
   | { type: "CLEAR_NOTIFICATION" };
 
-const DEFAULT_RAW_RGB: RGBColor = { r: 236, g: 212, b: 164, hex: "#ecd4a4" };
+const DEFAULT_RAW_RGB: RGBColor = { r: NaN, g: NaN, b: NaN, hex: "transparent" };
 
 export function generateSessionId(): string {
   return "case_session_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
@@ -143,12 +149,13 @@ export function createInitialState(initialCase: ClinicalCase = CLINICAL_CASES[0]
     caseSessionId: generateSessionId(),
     activeAiRequestId: null,
     currentCase: initialCase,
-    crossPolarized: true,
+    crossPolarized: false,
+    zoneSamples: {},
     customImage: null,
     customImageMeta: null,
     isCalibrated: false,
     calibrationMultipliers: { r: 1.0, g: 1.0, b: 1.0 },
-    sampledPoint: { x: 250, y: 220 },
+    sampledPoint: null,
     rawSampledRgb: DEFAULT_RAW_RGB,
     sampledRgb: DEFAULT_RAW_RGB,
     sampledLab: lab,
@@ -166,11 +173,11 @@ export function createInitialState(initialCase: ClinicalCase = CLINICAL_CASES[0]
     checklist: {
       hydrationChecked: false,
       hydrationElapsedSeconds: 0,
-      daylightLighting5500KChecked: true,
-      criAbove90Checked: true,
-      neutralBibChecked: true,
-      lipstickRemovedChecked: true,
-      crossPolarizerMountedChecked: true,
+      daylightLighting5500KChecked: false,
+      criAbove90Checked: false,
+      neutralBibChecked: false,
+      lipstickRemovedChecked: false,
+      crossPolarizerMountedChecked: false,
     },
     aiResult: null,
     isAiLoading: false,
@@ -180,6 +187,12 @@ export function createInitialState(initialCase: ClinicalCase = CLINICAL_CASES[0]
 }
 
 export function caseReducer(state: CaseState, action: CaseAction): CaseState {
+  // Any input change invalidates completed and pending analyses in this session.
+  if (["SAMPLE_POINT", "APPLY_CALIBRATION", "RESET_CALIBRATION", "UPDATE_SUBSTRATE",
+    "SELECT_SHADE", "SET_SYSTEM_TAB", "SET_ZONE_FILTER", "TOGGLE_POLARIZATION", "SET_POLARIZATION",
+    "UPDATE_CASE_DETAILS"].includes(action.type)) {
+    state = { ...state, aiResult: null, aiError: null, activeAiRequestId: null, isAiLoading: false };
+  }
   switch (action.type) {
     case "START_NEW_CASE": {
       const template = action.payload?.templateCase || CLINICAL_CASES[0];
@@ -210,48 +223,23 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
     }
 
     case "UPLOAD_IMAGE_SUCCESS": {
-      // Re-evaluate current sample point on new image
-      return {
-        ...state,
-        customImage: action.payload.imageBase64,
-        customImageMeta: {
-          fileName: action.payload.fileName,
-          fileSizeBytes: action.payload.fileSizeBytes,
-          uploadedAt: new Date().toISOString(),
-        },
-        // Reset old calibration because new photo has different illumination balance
-        isCalibrated: false,
-        calibrationMultipliers: { r: 1.0, g: 1.0, b: 1.0 },
-        // Clear prior AI result to prevent old analysis from sticking to new image
-        aiResult: null,
-        aiError: null,
-        activeAiRequestId: null,
-        notification: {
-          id: Math.random().toString(36),
-          type: "success",
-          message: `Intraoral photograph "${action.payload.fileName}" loaded. Previous calibration cleared.`,
-        },
-      };
+      const initial = createInitialState({ ...state.currentCase, id: "uploaded", title: "Patient photograph",
+        patientInitials: "", toothNumber: "", clinicalNotes: "" });
+      return { ...initial, customImage: action.payload.imageBase64,
+        customImageMeta: { fileName: action.payload.fileName, fileSizeBytes: action.payload.fileSizeBytes,
+          uploadedAt: new Date().toISOString() },
+        notification: { id: generateSessionId(), type: "info",
+          message: "Photo loaded. Enter patient/tooth details, then select each zone and sample it." } };
     }
-
-    case "CLEAR_UPLOADED_IMAGE": {
-      return {
-        ...state,
-        customImage: null,
-        customImageMeta: null,
-        isCalibrated: false,
-        calibrationMultipliers: { r: 1.0, g: 1.0, b: 1.0 },
-        aiResult: null,
-        notification: {
-          id: Math.random().toString(36),
-          type: "info",
-          message: "Reverted to standard reference patient photograph.",
-        },
-      };
-    }
+    case "CLEAR_UPLOADED_IMAGE":
+      return createInitialState();
+    case "UPDATE_CASE_DETAILS":
+      return { ...state, currentCase: { ...state.currentCase, ...action.payload } };
 
     case "SAMPLE_POINT": {
       const { point, rawRgb } = action.payload;
+      if (!point || !isValidRGB(rawRgb)) return state;
+      const zone = action.payload.zone || (state.activeZoneFilter === "all" ? "middle" : state.activeZoneFilter);
       const effectiveRgb = state.isCalibrated
         ? applyCalibration(rawRgb, state.calibrationMultipliers)
         : rawRgb;
@@ -260,6 +248,7 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
 
       return {
         ...state,
+        zoneSamples: { ...state.zoneSamples, [zone]: { point, rawRgb } },
         sampledPoint: point,
         rawSampledRgb: rawRgb,
         sampledRgb: effectiveRgb,
@@ -271,6 +260,7 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
 
     case "APPLY_CALIBRATION": {
       const multipliers = action.payload.multipliers;
+      if (!Object.values(multipliers).every(v => Number.isFinite(v) && v > 0)) return state;
       const calibratedRgb = applyCalibration(state.rawSampledRgb, multipliers);
       const lab = sRGBToCIELAB(calibratedRgb.r, calibratedRgb.g, calibratedRgb.b);
       const munsell = translateLabToMunsell(lab);
@@ -317,6 +307,7 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
       return {
         ...state,
         crossPolarized: !state.crossPolarized,
+        checklist: { ...state.checklist, crossPolarizerMountedChecked: !state.crossPolarized },
       };
     }
 
@@ -324,6 +315,7 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
       return {
         ...state,
         crossPolarized: action.payload,
+        checklist: { ...state.checklist, crossPolarizerMountedChecked: action.payload },
       };
     }
 
@@ -353,10 +345,13 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
     }
 
     case "SET_ZONE_FILTER": {
-      return {
-        ...state,
-        activeZoneFilter: action.payload,
-      };
+      const zone = action.payload === "all" ? "middle" : action.payload;
+      const sample = state.zoneSamples[zone];
+      const rawRgb = sample?.rawRgb || DEFAULT_RAW_RGB;
+      const rgb = state.isCalibrated ? applyCalibration(rawRgb, state.calibrationMultipliers) : rawRgb;
+      const lab = sRGBToCIELAB(rgb.r, rgb.g, rgb.b);
+      return { ...state, activeZoneFilter: action.payload, sampledPoint: sample?.point || null,
+        rawSampledRgb: rawRgb, sampledRgb: rgb, sampledLab: lab, munsell: translateLabToMunsell(lab), selectedMatch: null };
     }
 
     case "START_AI_REQUEST": {
@@ -375,8 +370,7 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
         action.payload.sessionId !== state.caseSessionId
       ) {
         console.warn(
-          "Discarding obsolete AI analysis response from previous case/request",
-          action.payload
+          "Discarding obsolete AI analysis response from previous case/request"
         );
         return state;
       }
@@ -427,6 +421,10 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
     }
 
     case "UPDATE_CHECKLIST": {
+      const polarization = action.payload.crossPolarizerMountedChecked;
+      if (polarization !== undefined && polarization !== state.crossPolarized) {
+        state = { ...state, crossPolarized: polarization, aiResult: null, aiError: null, activeAiRequestId: null, isAiLoading: false };
+      }
       return {
         ...state,
         checklist: {

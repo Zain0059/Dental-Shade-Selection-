@@ -1,5 +1,5 @@
 import { DieShadeND, StandardShade, SubstrateConfig } from "../types/dental";
-import { translateLabToMunsell } from "./colorScience";
+import { translateLabToMunsell, DELTA_E_THRESHOLDS } from "./colorScience";
 
 /**
  * Standardized Measurement Conditions & Scientific Source Documentation
@@ -13,8 +13,8 @@ export const DATABASE_MEASUREMENT_STANDARDS = {
   measuringGeometry: "d/8° Integrating Sphere or 45°/0° Directional Geometry",
   specularComponent: "Specular Component Excluded (SCE) via Linear Cross-Polarization",
   calibrationReference: "White ceramic reflectance standard traceable to NIST / BAM standards",
-  perceptibilityThresholdDeltaE00: 0.8, // 50:50% perceptibility threshold (PT) in human clinical trials
-  acceptabilityThresholdDeltaE00: 1.8,  // 50:50% clinical acceptability threshold (AT) in aesthetic dentistry
+  perceptibilityThresholdDeltaE00: DELTA_E_THRESHOLDS.perceptibility, // 50:50% perceptibility threshold (PT) in human clinical trials
+  acceptabilityThresholdDeltaE00: DELTA_E_THRESHOLDS.acceptability,  // 50:50% clinical acceptability threshold (AT) in aesthetic dentistry
   formula: "CIEDE2000 (ΔE₀₀) with equal weighting coefficients kL=1, kC=1, kH=1",
   disclaimer: "Match similarity percentages represent deterministic proximity indices relative to the 4.0 ΔE₀₀ threshold, not probabilistic Bayesian likelihoods.",
 };

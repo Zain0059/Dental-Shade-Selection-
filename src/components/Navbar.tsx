@@ -1,3 +1,4 @@
+import { isChecklistComplete } from "../lib/validationSchemas";
 import React from "react";
 import {
   Sparkles,
@@ -38,11 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   showAdvancedPanels,
   onToggleAdvancedPanels,
 }) => {
-  const allChecklistPassed =
-    checklist.hydrationChecked &&
-    checklist.daylightLighting5500KChecked &&
-    checklist.neutralBibChecked &&
-    checklist.lipstickRemovedChecked;
+  const allChecklistPassed = isChecklistComplete(checklist);
 
   return (
     <header id="app-header" className="bg-white border-b border-neutral-200 sticky top-0 z-40">

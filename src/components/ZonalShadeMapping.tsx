@@ -69,37 +69,18 @@ export const ZonalShadeMapping: React.FC = () => {
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-emerald-600 font-bold">
-                    ΔE₀₀ {data.matchedClassical.deltaE00.toFixed(2)}
+                    ΔE₀₀ {data.isMeasured ? data.matchedClassical.deltaE00.toFixed(2) : "N/A"}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-1 text-[10px] font-mono text-center pt-2 border-t border-neutral-200 text-neutral-500">
-                  <div>L*: <strong className="text-neutral-800">{data.sampledLab.L.toFixed(1)}</strong></div>
-                  <div>a*: <strong className="text-neutral-800">{data.sampledLab.a.toFixed(1)}</strong></div>
-                  <div>b*: <strong className="text-neutral-800">{data.sampledLab.b.toFixed(1)}</strong></div>
+                  <div>L*: <strong className="text-neutral-800">{Number.isFinite(data.sampledLab.L) ? data.sampledLab.L.toFixed(1) : "N/A"}</strong></div>
+                  <div>a*: <strong className="text-neutral-800">{Number.isFinite(data.sampledLab.a) ? data.sampledLab.a.toFixed(1) : "N/A"}</strong></div>
+                  <div>b*: <strong className="text-neutral-800">{Number.isFinite(data.sampledLab.b) ? data.sampledLab.b.toFixed(1) : "N/A"}</strong></div>
                 </div>
               </div>
 
-              {/* Optical Features Tags */}
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-neutral-500">Translucency Index:</span>
-                  <span className="font-mono font-bold text-teal-700">{data.translucencyIndex}%</span>
-                </div>
-                <div className="w-full bg-white rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-teal-600 h-full rounded-full"
-                    style={{ width: `${data.translucencyIndex}%` }}
-                  />
-                </div>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {data.opticalCharacteristics.map((char, i) => (
-                    <span key={i} className="text-[10px] bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded border border-neutral-300">
-                      {char}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              <p className="text-xs text-neutral-500">Translucency and morphology: not measured</p>
             </div>
           );
         })}

@@ -108,3 +108,8 @@ a:focus-visible,
   }
 }
 
+
+@media print {
+  body:has(#modal-lab-prescription) main, body:has(#modal-lab-prescription) #app-header { display: none !important; }
+  #modal-lab-prescription { max-height: none !important; }
+}

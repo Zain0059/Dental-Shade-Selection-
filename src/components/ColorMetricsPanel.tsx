@@ -109,10 +109,10 @@ export const ColorMetricsPanel: React.FC = () => {
                     : "bg-rose-500/20 text-rose-700 border border-rose-500/40"
                 }`}>
                   {currentMatch.trafficLight === "green"
-                    ? "Good Match (ΔE ≤ 1.6)"
+                    ? "Good Match (ΔE ≤ 0.8)"
                     : currentMatch.trafficLight === "yellow"
-                    ? "Acceptable Match (ΔE ≤ 3.2)"
-                    : "Adjust / Unacceptable (ΔE > 3.2)"}
+                    ? "Acceptable Match (ΔE ≤ 1.8)"
+                    : "Adjust / Unacceptable (ΔE > 1.8)"}
                 </span>
               </div>
               <p className="text-xs text-neutral-600 mt-0.5">{currentMatch.shade.description}</p>
@@ -160,7 +160,7 @@ export const ColorMetricsPanel: React.FC = () => {
               <div className="text-[10px] text-neutral-500 font-sans">a* (Red-Green)</div>
               <div className="text-sm font-bold text-emerald-600">
                 {Number.isFinite(sampledLab.a)
-                  ? sampledLab.a >= 0 ? `+${sampledLab.a.toFixed(1)}` : sampledLab.a.toFixed(1)
+                  ? sampledLab.a >= 0 ? `+${Number.isFinite(sampledLab.a) ? sampledLab.a.toFixed(1) : "N/A"}` : sampledLab.a.toFixed(1)
                   : "N/A"}
               </div>
               <div className="text-[9px] text-neutral-400">Red (+) / Grn (-)</div>
@@ -170,7 +170,7 @@ export const ColorMetricsPanel: React.FC = () => {
               <div className="text-[10px] text-neutral-500 font-sans">b* (Yellow-Blue)</div>
               <div className="text-sm font-bold text-amber-600">
                 {Number.isFinite(sampledLab.b)
-                  ? sampledLab.b >= 0 ? `+${sampledLab.b.toFixed(1)}` : sampledLab.b.toFixed(1)
+                  ? sampledLab.b >= 0 ? `+${Number.isFinite(sampledLab.b) ? sampledLab.b.toFixed(1) : "N/A"}` : sampledLab.b.toFixed(1)
                   : "N/A"}
               </div>
               <div className="text-[9px] text-neutral-400">Yel (+) / Blu (-)</div>

@@ -54,13 +54,14 @@ export const Step1Capture: React.FC<Step1CaptureProps> = ({
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full min-w-0">
               <div className="relative min-w-0 flex-1 w-full">
                 <select
-                  value={currentCase.id}
+                  value={cases.some(c => c.id === currentCase.id) ? currentCase.id : ""}
                   onChange={(e) => {
                     const found = cases.find((c) => c.id === e.target.value);
                     if (found) onSelectCase(found);
                   }}
                   className="w-full min-w-0 max-w-full bg-white border border-neutral-300 text-xs text-neutral-900 rounded-lg p-2 font-medium focus:ring-1 focus:ring-teal-600 focus:outline-none truncate"
                 >
+                  <option value="" disabled>Uploaded patient image</option>
                   {cases.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.toothNumber} • {c.title}
@@ -84,7 +85,7 @@ export const Step1Capture: React.FC<Step1CaptureProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-teal-600" />
-                Cross-Polarization Filter (Anti-Glare)
+                Photo captured with cross-polarizers?
               </span>
               <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
                 crossPolarized ? "bg-teal-600/15 text-teal-700 border border-teal-600/30" : "bg-amber-500/20 text-amber-700 border border-amber-500/30"
@@ -94,8 +95,8 @@ export const Step1Capture: React.FC<Step1CaptureProps> = ({
             </div>
             <p className="text-[11px] text-neutral-500">
               {crossPolarized 
-                ? "Active: Eliminates enamel flash glare to accurately measure underlying dentin chroma and mamelons."
-                : "Inactive: Shows external enamel texture and gloss, but specular reflections may distort color coordinates."}
+                ? "Marked as captured with physical cross-polarizers. This setting does not modify the photograph."
+                : "Not confirmed. Only enable this if cross-polarizers were used during capture."}
             </p>
             <button
               onClick={onTogglePolarized}
@@ -106,7 +107,7 @@ export const Step1Capture: React.FC<Step1CaptureProps> = ({
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Toggle Glare Filter: {crossPolarized ? "Switch to Unpolarized" : "Turn ON Cross-Polarizer"}</span>
+              <span>Capture status: {crossPolarized ? "Mark not confirmed" : "Confirm cross-polarized capture"}</span>
             </button>
           </div>
 

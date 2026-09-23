@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { validateImageUpload, validateAiAnalysisResponse } from "./lib/validationSchemas";
 import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from "lucide-react";
 import { Navbar } from "./components/Navbar";
@@ -19,6 +19,7 @@ export default function App() {
   const [showAdvancedPanels, setShowAdvancedPanels] = useState(false);
   const { state, dispatch, classicalMatches, threeDMatches, bleachMatches, zones } = useCaseContext();
 
+  const systemMatches = state.activeSystemTab === "3d_master" ? threeDMatches : state.activeSystemTab === "bleach" ? bleachMatches : classicalMatches;
   const {
     currentCase,
     crossPolarized,
@@ -35,6 +36,7 @@ export default function App() {
     substrate,
     checklist,
     aiResult,
+    aiError,
     isAiLoading,
     notification,
     caseSessionId,
@@ -67,47 +69,15 @@ export default function App() {
     return () => clearInterval(timer);
   }, [checklist.hydrationElapsedSeconds, dispatch]);
 
-  // Select Clinical Case
-  const handleSelectCase = (newCase: ClinicalCase) => {
-    dispatch({ type: "LOAD_CASE", payload: { caseItem: newCase } });
-  };
-
-  // Start New Clinical Case Flow (Full Reset)
-  const handleStartNewCase = () => {
-    dispatch({ type: "START_NEW_CASE" });
-  };
-
-  // Gray Card Reference Calibration
-  const handleCalibrateFromPoint = (sampledGrayRgb: RGBColor) => {
-    const target = 119;
-    const rMult = sampledGrayRgb.r > 0 ? target / sampledGrayRgb.r : 1.0;
-    const gMult = sampledGrayRgb.g > 0 ? target / sampledGrayRgb.g : 1.0;
-    const bMult = sampledGrayRgb.b > 0 ? target / sampledGrayRgb.b : 1.0;
-
-    dispatch({
-      type: "APPLY_CALIBRATION",
-      payload: { multipliers: { r: rMult, g: gMult, b: bMult } },
-    });
-  };
-
-  const handleResetCalibration = () => {
-    dispatch({ type: "RESET_CALIBRATION" });
-  };
-
-  // Color selection from interactive canvas
-  const handleSelectSamplePoint = (
-    point: { x: number; y: number },
-    rawRgb: RGBColor,
-    _rawLab: CIELABColor
-  ) => {
-    dispatch({
-      type: "SAMPLE_POINT",
-      payload: { point, rawRgb },
-    });
-  };
+  const uploadToken = useRef(0);
+  const sessionRef = useRef(caseSessionId);
+  sessionRef.current = caseSessionId;
+  const handleStartNewCase = () => { uploadToken.current++; dispatch({ type: "START_NEW_CASE" }); };
 
   // Handle Photo Upload with runtime validation
   const handleUploadClick = () => {
+    const token = ++uploadToken.current;
+    const session = caseSessionId;
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/jpeg,image/png,image/webp";
@@ -127,7 +97,12 @@ export default function App() {
         }
 
         const reader = new FileReader();
+        reader.onerror = () => dispatch({ type: "SET_NOTIFICATION", payload: { type: "error", message: "Could not read photograph." } });
         reader.onload = (re) => {
+          const image = new Image();
+          image.onerror = () => dispatch({ type: "SET_NOTIFICATION", payload: { type: "error", message: "Cannot decode photograph." } });
+          image.onload = () => {
+          if (token !== uploadToken.current || session !== sessionRef.current) return;
           dispatch({
             type: "UPLOAD_IMAGE_SUCCESS",
             payload: {
@@ -136,6 +111,8 @@ export default function App() {
               fileSizeBytes: file.size,
             },
           });
+          };
+          image.src = re.target?.result as string;
         };
         reader.readAsDataURL(file);
       }
@@ -145,6 +122,10 @@ export default function App() {
 
   // Run AI Master Ceramist Analysis
   const handleRunAiAnalysis = async () => {
+    if (!state.customImage || !state.sampledPoint) {
+      dispatch({ type: "SET_NOTIFICATION", payload: { type: "error", message: "Upload a patient photograph and sample a tooth region before requesting AI analysis." } });
+      return;
+    }
     const requestId = "req_" + Math.random().toString(36).substring(2, 9);
     const sessionSnapshot = caseSessionId;
 
@@ -154,11 +135,11 @@ export default function App() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
-    }, 12000);
+    }, 55000);
 
     try {
-      const targetCode = selectedMatch?.shade.code || classicalMatches[0].shade.code;
-      const res = await fetch("/api/ai/analyze-tooth", {
+      const targetCode = selectedMatch?.shade.code || systemMatches[0].shade.code;
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ""}/api/ai/analyze-tooth`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -183,14 +164,12 @@ export default function App() {
 
       clearTimeout(timeoutId);
 
-      if (!res.ok) {
-        throw new Error(`Server returned status ${res.status}`);
-      }
-
+      if (!res.headers.get("content-type")?.includes("application/json")) throw new Error("AI backend is unavailable. Static hosting needs a separately configured API server.");
       const data = await res.json();
+      if (!res.ok || data.success !== true) throw new Error(data.error || `Server returned status ${res.status}`);
       const validation = validateAiAnalysisResponse(data);
       if (!validation.isValid) {
-        console.warn("AI response contract warnings:", validation.errors);
+        throw new Error("AI returned an invalid response; no analysis was accepted.");
       }
 
       dispatch({
@@ -203,48 +182,8 @@ export default function App() {
       });
     } catch (err: any) {
       clearTimeout(timeoutId);
-      console.warn("AI Analysis error or request cancelled, applying colorimetric fallback:", err.message);
-
-      // Fallback result in UI
-      const fallbackResult = {
-        success: true,
-        isAiGenerated: false,
-        fallbackNotice: "High demand / offline mode: computed via local colorimetric calibration matrix.",
-        summary: `Target shade ${selectedMatch?.shade.code || "VITA A2"} analyzed for ${substrate.material} over ${substrate.prepShade} prep with Value-first optical matching.`,
-        morphology: {
-          mamelons: crossPolarized ? "3 internal mamelon lobes visible in incisal zone" : "Subtle mamelon geometry under natural reflection",
-          translucencyGrade: "Moderate-High (Type 2 Opalescent Halo scattering)",
-          cervicalWarmth: `Gingival zone indicates ${zones.cervical.matchedClassical.shade.code} saturation`,
-          surfaceTexture: crossPolarized ? "Specular glare neutralized by cross-polarization" : "Perikymata and developmental grooves",
-          whiteSpots: "No abnormal severe fluorosis detected",
-        },
-        ceramicRecipe: {
-          ingot: substrate.prepShade === "ND4" || substrate.prepShade === "ND5" ? "IPS e.max MO 1" : "IPS e.max LT A2",
-          cervicalModifier: "VITA Akzent Plus Warm Ochre (ES02)",
-          bodyPowder: "e.max Ceram Dentin A2",
-          incisalPowder: "e.max Ceram Enamel Opal 1 (OE1)",
-          firingNotes: "750°C vacuum firing, 2 min slow cool down.",
-        },
-        trafficLight: {
-          status: "green",
-          confidenceScore: 94,
-          rationale: "ΔE00 within clinical tolerance.",
-        },
-        clinicalRecommendations: [
-          "Verify tooth hydration prior to tooth preparation or isolation.",
-          "Use shade-matched try-in paste prior to final resin luting.",
-          "Transmit both cross-polarized and non-polarized photographs to lab ceramist.",
-        ],
-      };
-
-      dispatch({
-        type: "AI_REQUEST_SUCCESS",
-        payload: {
-          requestId,
-          sessionId: sessionSnapshot,
-          result: fallbackResult,
-        },
-      });
+      dispatch({ type: "AI_REQUEST_FAILURE", payload: { requestId, sessionId: sessionSnapshot,
+        error: err.name === "AbortError" ? "AI analysis timed out. Retry when available." : err.message } });
     }
   };
 
@@ -297,6 +236,15 @@ export default function App() {
           </div>
         )}
 
+        <section className="mb-4 bg-white border rounded-xl p-4 grid sm:grid-cols-3 gap-3 text-sm">
+          <label>Patient identifier<input aria-label="Patient identifier" className="block border rounded p-2 w-full" value={currentCase.patientInitials}
+            onChange={e => dispatch({ type: "UPDATE_CASE_DETAILS", payload: { patientInitials: e.target.value } })} /></label>
+          <label>Tooth number<input aria-label="Tooth number" className="block border rounded p-2 w-full" value={currentCase.toothNumber}
+            onChange={e => dispatch({ type: "UPDATE_CASE_DETAILS", payload: { toothNumber: e.target.value } })} /></label>
+          <label>Clinical notes<input aria-label="Clinical notes" className="block border rounded p-2 w-full" value={currentCase.clinicalNotes}
+            onChange={e => dispatch({ type: "UPDATE_CASE_DETAILS", payload: { clinicalNotes: e.target.value } })} /></label>
+        </section>
+
         {!showAdvancedPanels ? (
           <GuidedFlowWizard
             onOpenChecklistModal={() => setIsChecklistOpen(true)}
@@ -344,7 +292,7 @@ export default function App() {
         isOpen={isLabPrescriptionOpen}
         onClose={() => setIsLabPrescriptionOpen(false)}
         currentCase={currentCase}
-        targetMatch={selectedMatch || classicalMatches[0]}
+        targetMatch={selectedMatch || systemMatches[0]}
         sampledLab={sampledLab}
         munsell={munsell}
         zones={zones}
@@ -357,6 +305,7 @@ export default function App() {
         onClose={() => setIsAiDrawerOpen(false)}
         isLoading={isAiLoading}
         result={aiResult}
+        error={aiError}
         onReanalyze={handleRunAiAnalysis}
       />
     </div>
