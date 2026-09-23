@@ -6,7 +6,6 @@ import {
   isValidCIELAB,
   sRGBToCIELAB,
   translateLabToMunsell,
-  ZONE_OFFSETS,
 } from "./colorScience";
 import { caseReducer, createInitialState } from "../store/caseStore";
 import { CLINICAL_CASES } from "./sampleCases";
@@ -153,6 +152,9 @@ export function testCalibrationAndResetLifecycle(): TestResultItem[] {
     state.calibrationMultipliers.r === 1 &&
     state.calibrationMultipliers.g === 1 &&
     state.calibrationMultipliers.b === 1;
+
+  state = caseReducer(state, { type: "SAMPLE_POINT", payload: {
+    point: { x: 10, y: 10 }, rawRgb: { r: 150, g: 140, b: 120, hex: "#968c78" } } });
 
   // Apply calibration multiplier (e.g. sensor was underexposed/cool: R: 1.15, G: 1.02, B: 0.94)
   state = caseReducer(state, {
@@ -325,25 +327,6 @@ export function testAiFailureAndTimeoutHandling(): TestResultItem[] {
   return results;
 }
 
-export function testZonalMathExtraction(): TestResultItem[] {
-  const results: TestResultItem[] = [];
-  const t0 = performance.now();
-  
-  const cervValid = ZONE_OFFSETS.cervical.dL === -3.5 && ZONE_OFFSETS.cervical.da === 0.8 && ZONE_OFFSETS.cervical.db === 3.2;
-  const incValid = ZONE_OFFSETS.incisal.dL === 2.0 && ZONE_OFFSETS.incisal.da === -0.9 && ZONE_OFFSETS.incisal.db === -4.5;
-
-  results.push({
-    id: "zonal-math-extraction",
-    suite: "Color Science Extraction",
-    name: "Zonal Math CIELAB Constants Verification",
-    passed: cervValid && incValid,
-    message: `Cervical offsets (${ZONE_OFFSETS.cervical.dL}, ${ZONE_OFFSETS.cervical.da}, ${ZONE_OFFSETS.cervical.db}) and incisal offsets (${ZONE_OFFSETS.incisal.dL}, ${ZONE_OFFSETS.incisal.da}, ${ZONE_OFFSETS.incisal.db}) correctly match legacy inline constants.`,
-    durationMs: performance.now() - t0,
-  });
-
-  return results;
-}
-
 /**
  * Runs all test suites and returns a consolidated report.
  */
@@ -354,7 +337,6 @@ export function runAllRegressionTests(): TestSuiteSummary {
     ...testCalibrationAndResetLifecycle(),
     ...testUploadStateClearingAndNewCaseLifecycle(),
     ...testAiFailureAndTimeoutHandling(),
-    ...testZonalMathExtraction(),
   ];
 
   const passed = results.filter((r) => r.passed).length;

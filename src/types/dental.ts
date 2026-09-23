@@ -41,7 +41,7 @@ export interface ShadeMatchResult {
   shade: StandardShade;
   deltaE00: number; // CIEDE2000, or NaN if measurement is invalid
   deltaEab: number; // Classical Euclidean CIE76, or NaN if invalid
-  trafficLight: TrafficLightStatus; // Green <= 1.6, Yellow <= 3.2, Red > 3.2, Invalid = non-finite
+  trafficLight: TrafficLightStatus; // Green <= 0.8, Yellow <= 1.8, Red > 1.8, Invalid = non-finite
   matchRank: number;
   matchSimilarityScore: number; // 0..100 proximity index relative to ΔE00 threshold (NOT a statistical probability)
   confidencePercent: number; // Backward-compatible alias for matchSimilarityScore
@@ -60,7 +60,8 @@ export interface ZoneData {
   munsell: MunsellColor;
   matchedClassical: ShadeMatchResult;
   matched3D: ShadeMatchResult;
-  translucencyIndex: number; // 0 (opaque) to 100 (high enamel translucency)
+  translucencyIndex: number | null;
+  isMeasured: boolean; // 0 (opaque) to 100 (high enamel translucency)
   opticalCharacteristics: string[];
 }
 

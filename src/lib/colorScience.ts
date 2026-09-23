@@ -335,15 +335,17 @@ export function translateLabToMunsell(lab: CIELABColor): MunsellColor {
 
 /**
  * Returns traffic light color category based on CIEDE2000 thresholds (Paravina et al., Joiner et al.)
- * Green: <= 1.6 (Imperceptible / Excellent match, well below 1.8 clinical acceptability limit)
- * Yellow: 1.6 - 3.2 (Clinically acceptable shade match range)
- * Red: > 3.2 (Clinically unacceptable color deviation requiring formulation correction)
+ * Green: <= 0.8 (below perceptibility threshold)
+ * Yellow: > 0.8 to 1.8 (within acceptability threshold)
+ * Red: > 1.8 (Clinically unacceptable color deviation requiring formulation correction)
  * Invalid: NaN or non-finite calculation input
  */
+export const DELTA_E_THRESHOLDS = { perceptibility: 0.8, acceptability: 1.8 } as const;
+
 export function getTrafficLightStatus(deltaE00: number): TrafficLightStatus {
   if (!Number.isFinite(deltaE00) || deltaE00 < 0) return "invalid";
-  if (deltaE00 <= 1.6) return "green";
-  if (deltaE00 <= 3.2) return "yellow";
+  if (deltaE00 <= DELTA_E_THRESHOLDS.perceptibility) return "green";
+  if (deltaE00 <= DELTA_E_THRESHOLDS.acceptability) return "yellow";
   return "red";
 }
 
@@ -374,7 +376,7 @@ export function findClosestShades(
   const scored: ShadeMatchResult[] = database.map((shade) => {
     if (!isSampleValid) {
       return {
-        shade,
+        shade: { ...shade, id: "unmeasured", code: "N/A", name: "Not measured", description: "Select a zone and sample the photograph.", categoryGroup: "N/A" },
         deltaE00: NaN,
         deltaEab: NaN,
         trafficLight: "invalid" as const,
@@ -403,7 +405,7 @@ export function findClosestShades(
   });
 
   if (!isSampleValid) {
-    return scored.slice(0, limit).map((res, index) => ({
+    return scored.slice(0, Math.min(1, limit)).map((res, index) => ({
       ...res,
       matchRank: index + 1,
     }));
@@ -428,27 +430,11 @@ export function applyCalibration(
   rgb: RGBColor,
   multipliers: { r: number; g: number; b: number }
 ): RGBColor {
-  const rCal = Math.min(255, Math.max(0, Math.round(rgb.r * multipliers.r)));
-  const gCal = Math.min(255, Math.max(0, Math.round(rgb.g * multipliers.g)));
-  const bCal = Math.min(255, Math.max(0, Math.round(rgb.b * multipliers.b)));
+  if (!isValidRGB(rgb)) return { r: NaN, g: NaN, b: NaN, hex: "transparent" };
+  const rCal = linearToSRGB(sRGBToLinear(rgb.r) * multipliers.r);
+  const gCal = linearToSRGB(sRGBToLinear(rgb.g) * multipliers.g);
+  const bCal = linearToSRGB(sRGBToLinear(rgb.b) * multipliers.b);
   const hex = `#${rCal.toString(16).padStart(2, "0")}${gCal.toString(16).padStart(2, "0")}${bCal.toString(16).padStart(2, "0")}`;
 
   return { r: rCal, g: gCal, b: bCal, hex };
 }
-
-export const ZONE_OFFSETS = {
-  cervical: {
-    dL: -3.5,
-    da: 0.8,
-    db: 3.2,
-    opticalCharacteristics: ["High Chroma Saturation", "Warm Terracotta/Ochre", "Dentin Emergence Profile"],
-    description: "Warmer saturation (+b*), thinner enamel, strong dentin presence.",
-  },
-  incisal: {
-    dL: 2.0,
-    da: -0.9,
-    db: -4.5,
-    opticalCharacteristics: ["3-Lobe Mamelon Architecture", "Opal Effect (OE1/OE2)", "Amber Halo Rim"],
-    description: "High translucency, opalescent light scattering (blue reflection / amber transmission), mamelon lobes.",
-  },
-};

@@ -41,9 +41,7 @@ export const Step2SelectShade: React.FC<Step2SelectShadeProps> = ({
 }) => {
   const isInvalidMeasurement = !topMatch || topMatch.trafficLight === "invalid" || Number.isNaN(topMatch.deltaE00);
   const isDarkPrep = ["ND4", "ND5", "ND6", "ND7", "ND8", "ND9"].includes(substrate.prepShade);
-  const recommendedIngot = isDarkPrep 
-    ? (substrate.thicknessMm < 0.8 ? "IPS e.max HO (High Opacity)" : "IPS e.max MO 1 (Medium Opacity)")
-    : (substrate.thicknessMm >= 1.2 ? "IPS e.max MT (Medium Translucency)" : "IPS e.max LT (Low Translucency)");
+  const recommendedIngot = "Material-specific selection required; confirm with the ceramist";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -135,7 +133,7 @@ export const Step2SelectShade: React.FC<Step2SelectShadeProps> = ({
               ) : (
                 <strong className="text-red-600 font-bold">N/A (Invalid)</strong>
               )}{" "}
-              ({isInvalidMeasurement ? "Review Coordinates" : "Optimal Blend"})
+              ({isInvalidMeasurement ? "Review Coordinates" : topMatch.trafficLight === "red" ? "Outside acceptance threshold" : topMatch.trafficLight === "yellow" ? "Within acceptance threshold" : "Below perceptibility threshold"})
             </div>
           </div>
         </div>
@@ -146,7 +144,7 @@ export const Step2SelectShade: React.FC<Step2SelectShadeProps> = ({
               <Layers className="w-4 h-4 text-teal-600" />
               <h3 className="font-bold text-sm text-neutral-900">3-Zone Anatomical Layering Breakdown</h3>
             </div>
-            <span className="text-[11px] text-neutral-500">Click a zone to review</span>
+            <span className="text-[11px] text-neutral-500">Sample each zone in Step 1</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -168,7 +166,7 @@ export const Step2SelectShade: React.FC<Step2SelectShadeProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-neutral-600 leading-snug">
-                Warmer cervical chroma with subtle ochre/copper emergence.
+                {zones.cervical.description}
               </p>
             </button>
 
@@ -190,7 +188,7 @@ export const Step2SelectShade: React.FC<Step2SelectShadeProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-neutral-600 leading-snug">
-                Base dentin core shade. Controls primary smile brightness and hue.
+                {zones.middle.description}
               </p>
             </button>
 
@@ -208,11 +206,11 @@ export const Step2SelectShade: React.FC<Step2SelectShadeProps> = ({
                   Incisal 1/3
                 </span>
                 <span className="text-[11px] font-mono font-bold text-neutral-900 bg-white px-2 py-0.5 rounded">
-                  {zones.incisal.matchedClassical.shade.code} / Opal
+                  {zones.incisal.matchedClassical.shade.code}
                 </span>
               </div>
               <p className="text-[11px] text-neutral-600 leading-snug">
-                Translucent enamel with opalescent amber-blue halo scattering.
+                {zones.incisal.description}
               </p>
             </button>
           </div>

@@ -27,12 +27,13 @@ export const SubstratePreparationPanel: React.FC = () => {
 
   return (
     <div id="substrate-panel" className="bg-white border border-neutral-200 rounded-2xl p-4 lg:p-5 flex flex-col gap-4">
+      <p className="text-xs text-amber-800">Planning heuristics only. These suggestions do not predict the final restoration color or establish a validated material recipe.</p>
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-neutral-200">
         <div className="flex items-center gap-2">
           <Sliders className="w-5 h-5 text-teal-600" />
           <h2 className="font-bold text-sm text-neutral-900 uppercase tracking-wider">
-            Substrate &amp; Material Compensation
+            Substrate &amp; Material Planning
           </h2>
         </div>
         <span className="text-[11px] font-mono text-neutral-500">
@@ -158,7 +159,7 @@ export const SubstratePreparationPanel: React.FC = () => {
                   ? "bg-amber-500/20 text-amber-700 border-amber-500/40"
                   : "bg-rose-500/20 text-rose-700 border-rose-500/40"
               }`}>
-                Masking Difficulty: {recipe.maskingDifficulty}
+                Estimated masking difficulty: {recipe.maskingDifficulty}
               </span>
             </div>
 
@@ -176,7 +177,7 @@ export const SubstratePreparationPanel: React.FC = () => {
             {/* Substrate Compensation Explanation */}
             <div className="text-xs text-neutral-600 leading-relaxed space-y-2">
               <p>
-                <strong>Substrate Factor:</strong> Under vital stump <strong>{substrate.prepShade}</strong> with a <strong>{substrate.thicknessMm}mm</strong> thickness, the laboratory must employ <strong>{recipe.recommendedOpacity}</strong> opacity to prevent underlying core show-through while matching target <strong>{targetShadeCode}</strong>.
+                <strong>Substrate Factor:</strong> Under vital stump <strong>{substrate.prepShade}</strong> with a <strong>{substrate.thicknessMm}mm</strong> thickness, a planning heuristic suggests <strong>{recipe.recommendedOpacity}</strong> opacity ; ceramist verification is required for target <strong>{targetShadeCode}</strong>.
               </p>
               <p className="text-[11px] text-neutral-500">
                 <strong>Try-In Paste:</strong> Recommend verifying with <em>Neutral</em> or <em>Warm +1</em> water-soluble try-in paste prior to final resin cementation.
