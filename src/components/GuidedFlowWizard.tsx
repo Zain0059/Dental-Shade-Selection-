@@ -12,6 +12,7 @@ interface GuidedFlowWizardProps {
   onOpenChecklistModal: () => void;
   onOpenCameraGuide: () => void;
   onUploadClick: () => void;
+  hasPatientPhoto: boolean;
   onOpenAiAnalysis: () => void;
   onOpenLabPrescription: () => void;
   onStartNewCase?: () => void;
@@ -22,6 +23,7 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
   onOpenChecklistModal,
   onOpenCameraGuide,
   onUploadClick,
+  hasPatientPhoto,
   onOpenAiAnalysis,
   onOpenLabPrescription,
   onStartNewCase,
@@ -122,6 +124,7 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
           checklist={checklist}
           onUpdateChecklist={onUpdateChecklist}
           onUploadClick={onUploadClick}
+          hasPatientPhoto={hasPatientPhoto}
           sampledRgb={sampledRgb}
           topMatch={topMatch}
           childrenCanvas={childrenCanvas}

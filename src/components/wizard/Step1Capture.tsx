@@ -11,6 +11,7 @@ interface Step1CaptureProps {
   checklist: ClinicalProtocolChecklist;
   onUpdateChecklist: (updated: Partial<ClinicalProtocolChecklist>) => void;
   onUploadClick: () => void;
+  hasPatientPhoto: boolean;
   sampledRgb: RGBColor;
   topMatch: ShadeMatchResult;
   childrenCanvas: React.ReactNode;
@@ -26,6 +27,7 @@ export const Step1Capture: React.FC<Step1CaptureProps> = ({
   checklist,
   onUpdateChecklist,
   onUploadClick,
+  hasPatientPhoto,
   sampledRgb,
   topMatch,
   childrenCanvas,
@@ -73,10 +75,10 @@ export const Step1Capture: React.FC<Step1CaptureProps> = ({
               <button
                 onClick={onUploadClick}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold border border-neutral-300 transition shrink-0 w-full sm:w-auto"
-                title="Upload patient intraoral photo"
+                title={hasPatientPhoto ? "Replace patient photo while keeping case details" : "Upload patient intraoral photo"}
               >
                 <Upload className="w-3.5 h-3.5 text-teal-600" />
-                <span>Upload</span>
+                <span>{hasPatientPhoto ? "Replace photo" : "Upload"}</span>
               </button>
             </div>
           </div>

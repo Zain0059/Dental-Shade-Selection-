@@ -21,6 +21,7 @@ interface NavbarProps {
   onOpenAiAnalysis: () => void;
   onOpenCameraGuide: () => void;
   onUploadClick: () => void;
+  hasPatientPhoto: boolean;
   onStartNewCase?: () => void;
   isAiLoading: boolean;
   showAdvancedPanels: boolean;
@@ -34,6 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAiAnalysis,
   onOpenCameraGuide,
   onUploadClick,
+  hasPatientPhoto,
   onStartNewCase,
   isAiLoading,
   showAdvancedPanels,
@@ -140,8 +142,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="btn-upload-photo"
             onClick={onUploadClick}
+            aria-label={hasPatientPhoto ? "Replace patient photo" : "Upload patient photo"}
             className="flex items-center justify-center w-9 h-9 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition"
-            title="Upload patient photo"
+            title={hasPatientPhoto ? "Replace patient photo; case details will be kept" : "Upload patient photo"}
           >
             <Upload className="w-4 h-4" />
           </button>

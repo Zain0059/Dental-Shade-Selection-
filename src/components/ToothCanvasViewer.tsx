@@ -12,13 +12,14 @@ export const ToothCanvasViewer: React.FC = () => {
   const [ready, setReady] = useState(false);
   const [imageError, setImageError] = useState('');
   const [calibrating, setCalibrating] = useState(false);
+  const [grayReferenceConfirmed, setGrayReferenceConfirmed] = useState(false);
   const [sampleSize, setSampleSize] = useState(5);
   const [dimensions, setDimensions] = useState({ width: 500, height: 440 });
   const zone = state.activeZoneFilter === 'all' ? 'middle' : state.activeZoneFilter;
 
   useEffect(() => {
     let cancelled = false;
-    setReady(false); setImageError(''); setCalibrating(false);
+    setReady(false); setImageError(''); setCalibrating(false); setGrayReferenceConfirmed(false);
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d', { willReadFrequently: true });
     if (!canvas || !ctx) return;
@@ -55,6 +56,10 @@ export const ToothCanvasViewer: React.FC = () => {
     const rgb = sampleRegion(canvas.getContext('2d')!, x, y, sampleSize);
     if (!rgb) return;
     if (calibrating) {
+      if (!grayReferenceConfirmed) {
+        dispatch({ type: 'SET_NOTIFICATION', payload: { type: 'warning', message: 'Confirm that this is a known neutral gray reference card before applying correction.' } });
+        return;
+      }
       if ([rgb.r, rgb.g, rgb.b].some(v => v <= 5 || v >= 250)) {
         dispatch({ type: 'SET_NOTIFICATION', payload: { type: 'error', message: 'Reference is clipped or too dark. Select a properly exposed gray card patch.' } });
         return;
@@ -63,6 +68,7 @@ export const ToothCanvasViewer: React.FC = () => {
         r: 0.18 / sRGBToLinear(rgb.r), g: 0.18 / sRGBToLinear(rgb.g), b: 0.18 / sRGBToLinear(rgb.b),
       } } });
       setCalibrating(false);
+      setGrayReferenceConfirmed(false);
     } else {
       dispatch({ type: 'SAMPLE_POINT', payload: { point: { x, y }, rawRgb: rgb, zone } });
     }
@@ -122,6 +128,7 @@ export const ToothCanvasViewer: React.FC = () => {
                 aria-pressed={isSelected}
                 onClick={() => {
                   setCalibrating(false);
+                  setGrayReferenceConfirmed(false);
                   dispatch({ type: 'SET_ZONE_FILTER', payload: key });
                 }}
                 className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition ${
@@ -145,10 +152,17 @@ export const ToothCanvasViewer: React.FC = () => {
 
         <div className="text-right">
           <p className="text-xs text-neutral-600 font-medium" role="status">
-            {calibrating ? 'Click a known 18% gray reference patch.' : `Click the ${zone} third in the photo. Each zone is measured separately.`}
+            {calibrating ? 'Select a known neutral gray reference card photographed under the same light. This applies an approximate RGB correction, not camera calibration.' : `Click the ${zone} third in the photo. Each zone is measured separately.`}
           </p>
         </div>
       </div>
+
+      {calibrating && (
+        <label className="flex items-center gap-2.5 min-h-11 rounded-xl border border-amber-200 bg-amber-50 px-3 text-xs font-medium text-amber-950">
+          <input type="checkbox" checked={grayReferenceConfirmed} onChange={e => setGrayReferenceConfirmed(e.target.checked)} className="accent-teal-700" />
+          I confirm this is a known neutral gray reference card
+        </label>
+      )}
 
       {imageError && (
         <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2">
@@ -219,7 +233,7 @@ export const ToothCanvasViewer: React.FC = () => {
 
           <button
             disabled={!ready}
-            onClick={() => setCalibrating(v => !v)}
+            onClick={() => { setGrayReferenceConfirmed(false); setCalibrating(v => !v); }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition ${
               calibrating
                 ? 'bg-amber-100 border-amber-300 text-amber-900'

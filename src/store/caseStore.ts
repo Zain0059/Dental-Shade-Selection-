@@ -92,6 +92,14 @@ export type CaseAction =
         fileSizeBytes: number;
       };
     }
+  | {
+      type: "REPLACE_IMAGE_SUCCESS";
+      payload: {
+        imageBase64: string;
+        fileName: string;
+        fileSizeBytes: number;
+      };
+    }
   | { type: "CLEAR_UPLOADED_IMAGE" }
   | { type: "UPDATE_CASE_DETAILS"; payload: Partial<Pick<ClinicalCase, "patientInitials" | "toothNumber" | "clinicalNotes">> }
   | {
@@ -245,6 +253,21 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
           uploadedAt: new Date().toISOString() },
         notification: { id: generateSessionId(), type: "info",
           message: "Photo loaded. Enter patient/tooth details, then select each zone and sample it." } };
+    }
+    case "REPLACE_IMAGE_SUCCESS": {
+      const currentCase = { ...state.currentCase, id: "uploaded", title: "Patient photograph" };
+      const initial = createInitialState(currentCase);
+      return {
+        ...initial,
+        currentCase,
+        caseScope: state.caseScope,
+        substrate: state.substrate,
+        customImage: action.payload.imageBase64,
+        customImageMeta: { fileName: action.payload.fileName, fileSizeBytes: action.payload.fileSizeBytes,
+          uploadedAt: new Date().toISOString() },
+        notification: { id: generateSessionId(), type: "info",
+          message: "Photo replaced. Case details and restoration settings were kept; photo measurements and capture confirmations were cleared." },
+      };
     }
     case "CLEAR_UPLOADED_IMAGE":
       return createInitialState();

@@ -56,6 +56,35 @@ test('upload clears measurements, identity, calibration, selected shade and pend
   assert.equal(after.aiResult, null);
 });
 
+test('replacing the photo preserves case and restoration details but resets photo-derived data', () => {
+  let s = caseReducer(createInitialState(), { type: 'UPLOAD_IMAGE_SUCCESS', payload: {
+    imageBase64: 'data:image/png;base64,AAAA', fileName: 'first.png', fileSizeBytes: 3,
+  } });
+  s = caseReducer(s, { type: 'UPDATE_CASE_DETAILS', payload: {
+    patientInitials: 'P42', toothNumber: '11', clinicalNotes: 'Preserve incisal translucency',
+  } });
+  s = caseReducer(s, { type: 'UPDATE_SUBSTRATE', payload: { prepShade: 'ND4', thicknessMm: 0.8 } });
+  s = caseReducer(s, { type: 'SET_CASE_SCOPE', payload: 'full' });
+  s = sample(s, 'middle', 170);
+  s = caseReducer(s, { type: 'APPLY_CALIBRATION', payload: { multipliers: { r: 1.1, g: 1, b: 1 } } });
+  s = caseReducer(s, { type: 'TOGGLE_POLARIZATION' });
+  const oldSession = s.caseSessionId;
+
+  s = caseReducer(s, { type: 'REPLACE_IMAGE_SUCCESS', payload: {
+    imageBase64: 'data:image/png;base64,BBBB', fileName: 'replacement.png', fileSizeBytes: 4,
+  } });
+
+  assert.notEqual(s.caseSessionId, oldSession);
+  assert.equal(s.customImage, 'data:image/png;base64,BBBB');
+  assert.equal(s.currentCase.patientInitials, 'P42'); assert.equal(s.currentCase.toothNumber, '11');
+  assert.equal(s.currentCase.clinicalNotes, 'Preserve incisal translucency');
+  assert.equal(s.substrate.prepShade, 'ND4'); assert.equal(s.substrate.thicknessMm, 0.8);
+  assert.equal(s.caseScope, 'full');
+  assert.deepEqual(s.zoneSamples, {}); assert.equal(s.sampledPoint, null); assert.equal(s.isCalibrated, false);
+  assert.equal(s.crossPolarized, false); assert.equal(s.checklist.hydrationChecked, false);
+  assert.equal(s.selectedMatch, null); assert.equal(s.aiResult, null); assert.equal(s.isAiLoading, false);
+});
+
 test('every analysis input mutation invalidates completed and pending AI results', () => {
   const actions: CaseAction[] = [
     { type: 'UPDATE_SUBSTRATE', payload: { prepShade: 'ND9' } },

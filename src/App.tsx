@@ -78,6 +78,7 @@ export default function App() {
   const handleUploadClick = () => {
     const token = ++uploadToken.current;
     const session = caseSessionId;
+    const replaceExistingPhoto = Boolean(state.customImage);
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/jpeg,image/png,image/webp";
@@ -104,7 +105,7 @@ export default function App() {
           image.onload = () => {
           if (token !== uploadToken.current || session !== sessionRef.current) return;
           dispatch({
-            type: "UPLOAD_IMAGE_SUCCESS",
+            type: replaceExistingPhoto ? "REPLACE_IMAGE_SUCCESS" : "UPLOAD_IMAGE_SUCCESS",
             payload: {
               imageBase64: re.target?.result as string,
               fileName: file.name,
@@ -197,6 +198,7 @@ export default function App() {
         onOpenAiAnalysis={handleRunAiAnalysis}
         onOpenCameraGuide={() => setIsCameraGuideOpen(true)}
         onUploadClick={handleUploadClick}
+        hasPatientPhoto={Boolean(state.customImage)}
         onStartNewCase={handleStartNewCase}
         isAiLoading={isAiLoading}
         showAdvancedPanels={showAdvancedPanels}
@@ -324,6 +326,7 @@ export default function App() {
             onOpenAiAnalysis={handleRunAiAnalysis}
             onOpenLabPrescription={() => setIsLabPrescriptionOpen(true)}
             onStartNewCase={handleStartNewCase}
+            hasPatientPhoto={Boolean(state.customImage)}
             childrenCanvas={
               <ToothCanvasViewer />
             }
