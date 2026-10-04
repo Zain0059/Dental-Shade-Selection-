@@ -122,6 +122,7 @@ export const GuidedFlowWizard: React.FC<GuidedFlowWizardProps> = ({
           checklist={checklist}
           onUpdateChecklist={onUpdateChecklist}
           onUploadClick={onUploadClick}
+          onOpenCameraGuide={onOpenCameraGuide}
           sampledRgb={sampledRgb}
           topMatch={topMatch}
           childrenCanvas={childrenCanvas}

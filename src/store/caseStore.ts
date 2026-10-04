@@ -41,6 +41,7 @@ export interface CaseState {
   currentCase: ClinicalCase;
   crossPolarized: boolean;
   customImage: string | null;
+  originalImage: string | null;
   customImageMeta: {
     fileName: string;
     fileSizeBytes: number;
@@ -92,6 +93,14 @@ export type CaseAction =
         fileSizeBytes: number;
       };
     }
+  | {
+      type: "CROP_IMAGE_SUCCESS";
+      payload: {
+        croppedImageBase64: string;
+        isDemoCase?: boolean;
+      };
+    }
+  | { type: "REVERT_ORIGINAL_IMAGE" }
   | { type: "CLEAR_UPLOADED_IMAGE" }
   | { type: "UPDATE_CASE_DETAILS"; payload: Partial<Pick<ClinicalCase, "patientInitials" | "toothNumber" | "clinicalNotes">> }
   | {
@@ -158,6 +167,7 @@ export function createInitialState(initialCase: ClinicalCase = CLINICAL_CASES[0]
     crossPolarized: false,
     zoneSamples: {},
     customImage: null,
+    originalImage: null,
     customImageMeta: null,
     isCalibrated: false,
     calibrationMultipliers: { r: 1.0, g: 1.0, b: 1.0 },
@@ -197,7 +207,7 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
   // Any input change invalidates completed and pending analyses in this session.
   if (["SAMPLE_POINT", "APPLY_CALIBRATION", "RESET_CALIBRATION", "UPDATE_SUBSTRATE",
     "SELECT_SHADE", "SET_SYSTEM_TAB", "SET_ZONE_FILTER", "TOGGLE_POLARIZATION", "SET_POLARIZATION",
-    "UPDATE_CASE_DETAILS"].includes(action.type)) {
+    "UPDATE_CASE_DETAILS", "CROP_IMAGE_SUCCESS", "REVERT_ORIGINAL_IMAGE"].includes(action.type)) {
     state = { ...state, aiResult: null, aiError: null, activeAiRequestId: null, isAiLoading: false };
   }
   switch (action.type) {
@@ -240,11 +250,53 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
     case "UPLOAD_IMAGE_SUCCESS": {
       const initial = createInitialState({ ...state.currentCase, id: "uploaded", title: "Patient photograph",
         patientInitials: "", toothNumber: "", clinicalNotes: "" });
-      return { ...initial, customImage: action.payload.imageBase64,
+      return { ...initial, customImage: action.payload.imageBase64, originalImage: null,
         customImageMeta: { fileName: action.payload.fileName, fileSizeBytes: action.payload.fileSizeBytes,
           uploadedAt: new Date().toISOString() },
         notification: { id: generateSessionId(), type: "info",
-          message: "Photo loaded. Enter patient/tooth details, then select each zone and sample it." } };
+          message: "Photo loaded. Frame the tooth region or select and sample each zone directly." } };
+    }
+    case "CROP_IMAGE_SUCCESS": {
+      const isDemo = action.payload.isDemoCase;
+      const original = isDemo ? "DEMO_CASE" : (state.originalImage || state.customImage);
+      return {
+        ...state,
+        originalImage: original,
+        customImage: action.payload.croppedImageBase64,
+        zoneSamples: {},
+        sampledPoint: null,
+        rawSampledRgb: DEFAULT_RAW_RGB,
+        sampledRgb: DEFAULT_RAW_RGB,
+        sampledLab: sRGBToCIELAB(DEFAULT_RAW_RGB.r, DEFAULT_RAW_RGB.g, DEFAULT_RAW_RGB.b),
+        munsell: translateLabToMunsell(sRGBToCIELAB(DEFAULT_RAW_RGB.r, DEFAULT_RAW_RGB.g, DEFAULT_RAW_RGB.b)),
+        selectedMatch: null,
+        notification: {
+          id: generateSessionId(),
+          type: "success",
+          message: "Tooth region framed successfully. Color sampling accuracy improved.",
+        },
+      };
+    }
+    case "REVERT_ORIGINAL_IMAGE": {
+      if (!state.originalImage) return state;
+      const isDemo = state.originalImage === "DEMO_CASE";
+      return {
+        ...state,
+        customImage: isDemo ? null : state.originalImage,
+        originalImage: null,
+        zoneSamples: {},
+        sampledPoint: null,
+        rawSampledRgb: DEFAULT_RAW_RGB,
+        sampledRgb: DEFAULT_RAW_RGB,
+        sampledLab: sRGBToCIELAB(DEFAULT_RAW_RGB.r, DEFAULT_RAW_RGB.g, DEFAULT_RAW_RGB.b),
+        munsell: translateLabToMunsell(sRGBToCIELAB(DEFAULT_RAW_RGB.r, DEFAULT_RAW_RGB.g, DEFAULT_RAW_RGB.b)),
+        selectedMatch: null,
+        notification: {
+          id: generateSessionId(),
+          type: "info",
+          message: "Reverted to uncropped full view.",
+        },
+      };
     }
     case "CLEAR_UPLOADED_IMAGE":
       return createInitialState();
